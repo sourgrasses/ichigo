@@ -1,0 +1,23 @@
+const std = @import("std");
+
+const Allocator = std.mem.Allocator;
+const Vb = @import("vb.zig").Vb;
+
+pub fn main() anyerror!void {
+    var arena = std.heap.ArenaAllocator.init(std.heap.direct_allocator);
+    defer arena.deinit();
+
+    const allocator = &arena.allocator;
+
+    const args = try std.process.argsAlloc(allocator);
+
+    if (args.len != 2) {
+        std.debug.warn("Expected dreamsicle <rom_path>\n");
+        std.process.exit(1);
+    }
+
+    const rom_path = args[1];
+
+    var vb = try Vb.new(allocator, rom_path);
+    vb.run();
+}
