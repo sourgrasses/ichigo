@@ -1,10 +1,12 @@
 const std = @import("std");
 
-const Bus = @import("bus.zig").Bus;
+const Allocator = std.mem.Allocator;
+const Bus = @import("../bus.zig").Bus;
+const Cart = @import("../cart.zig").Cart;
 const Reg = @import("regs.zig").Reg;
 
 pub const Cpu = struct {
-    bus: *Bus,
+    bus: Bus,
 
     regs: [32]Reg,
 
@@ -21,16 +23,21 @@ pub const Cpu = struct {
     tkcw: Reg,
     pir: Reg,
 
-    pub fn new(bus: *Bus) Cpu {
+    pub fn new(allocator: *Allocator, cart: *Cart, wram: []u8) Cpu {
+        var bus = Bus.new(allocator, cart, wram);
+
         return Cpu{
             .bus = bus,
+
             .regs = [32]Reg{
                 Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0),
                 Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0),
                 Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0),
                 Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0),
             },
+
             .pc = Reg(0xFFFFFFF0),
+
             .psw = Reg(0),
             .eipc = Reg(0),
             .eipsw = Reg(0),

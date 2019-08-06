@@ -4,14 +4,15 @@ const mem = std.mem;
 const Allocator = std.mem.Allocator;
 const Bus = @import("bus.zig").Bus;
 const Cart = @import("cart.zig").Cart;
-const Cpu = @import("cpu.zig").Cpu;
-const Vip = @import("vip.zig").Vip;
-const Vsu = @import("vsu.zig").Vsu;
+const Cpu = @import("cpu/cpu.zig").Cpu;
+const Vip = @import("hw/vip.zig").Vip;
+const Vsu = @import("hw/vsu.zig").Vsu;
+
+const WRAM_SIZE = 64 * 1024;
 
 pub const Vb = struct {
     allocator: *Allocator,
 
-    bus: Bus,
     cpu: Cpu,
     vip: Vip,
     vsu: Vsu,
@@ -22,17 +23,19 @@ pub const Vb = struct {
     pub fn new(allocator: *Allocator, rom_path: []const u8) !Vb {
         var cart = try Cart.new(allocator, rom_path);
 
-        var wram = try allocator.alloc(u8, 64 * 1024);
+        var vip = try Vip.new(allocator);
+        var vsu = Vsu.new();
+
+        var wram = try allocator.alloc(u8, WRAM_SIZE);
         mem.set(u8, wram, 0);
 
-        var bus = Bus.new(allocator, &cart, wram);
+        var cpu = Cpu.new(allocator, &cart, wram);
 
         return Vb{
             .allocator = allocator,
-            .bus = bus,
-            .cpu = Cpu.new(&bus),
-            .vip = Vip.new(),
-            .vsu = Vsu.new(),
+            .cpu = cpu,
+            .vip = vip,
+            .vsu = vsu,
             .wram = wram,
             .cart = cart,
         };
