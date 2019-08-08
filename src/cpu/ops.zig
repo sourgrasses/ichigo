@@ -1,4 +1,5 @@
 const cpu = @import("cpu.zig");
+const Cpu = cpu.Cpu;
 
 pub const Instruction = fn (cpu: *Cpu, word: u32) void;
 
@@ -10,8 +11,8 @@ pub const INST_TABLE = [64]Instruction{
     cpu.orop,  cpu.andop, cpu.xor,     cpu.not,
 
     // 010000 - 011111
-    cpu.mov,   cpu.add,   cpu.setf,    cpu.cmp,
-    cpu.shl,   cpu.shr,   cpu.cli,     cpu.sar,
+    cpu.movi,  cpu.addi,  cpu.setf,    cpu.cmpi,
+    cpu.shli,  cpu.shri,  cpu.cli,     cpu.sari,
     cpu.trap,  cpu.reti,  cpu.halt,    cpu.illegal,
     cpu.ldsr,  cpu.stsr,  cpu.sei,     cpu.bit_string,
 

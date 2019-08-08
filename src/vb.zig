@@ -2,13 +2,14 @@ const std = @import("std");
 const mem = std.mem;
 
 const Allocator = std.mem.Allocator;
+
 const Bus = @import("bus.zig").Bus;
 const Cart = @import("cart.zig").Cart;
 const Cpu = @import("cpu/cpu.zig").Cpu;
 const Vip = @import("hw/vip.zig").Vip;
 const Vsu = @import("hw/vsu.zig").Vsu;
 
-const WRAM_SIZE = 64 * 1024;
+const WRAM_SIZE = comptime 64 * 1024;
 
 pub const Vb = struct {
     allocator: *Allocator,
@@ -24,12 +25,12 @@ pub const Vb = struct {
         var cart = try Cart.new(allocator, rom_path);
 
         var vip = try Vip.new(allocator);
-        var vsu = Vsu.new();
+        var vsu = try Vsu.new(allocator);
 
         var wram = try allocator.alloc(u8, WRAM_SIZE);
         mem.set(u8, wram, 0);
 
-        var cpu = Cpu.new(allocator, &cart, wram);
+        var cpu = Cpu.new(allocator, &cart);
 
         return Vb{
             .allocator = allocator,
@@ -42,6 +43,7 @@ pub const Vb = struct {
     }
 
     pub fn run(self: *Vb) void {
-        std.debug.warn("{}\n", self.cart.title());
+        self.cpu.boot(&self.vip, &self.vsu, self.wram, &self.cart);
+        self.cpu.run();
     }
 };

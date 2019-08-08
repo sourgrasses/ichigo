@@ -3,7 +3,10 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const Bus = @import("../bus.zig").Bus;
 const Cart = @import("../cart.zig").Cart;
+const INST_TABLE = @import("ops.zig").INST_TABLE;
 const Reg = @import("regs.zig").Reg;
+const Vip = @import("../hw/vip.zig").Vip;
+const Vsu = @import("../hw/vsu.zig").Vsu;
 
 pub const Cpu = struct {
     bus: Bus,
@@ -12,19 +15,19 @@ pub const Cpu = struct {
 
     pc: Reg,
 
-    psw: Reg,
-    eipc: Reg,
-    eipsw: Reg,
-    fepc: Reg,
-    fepsw: Reg,
-    ecr: Reg,
-    adtre: Reg,
-    chcw: Reg,
-    tkcw: Reg,
-    pir: Reg,
+    psw: Reg, // program status word
+    eipc: Reg, // exception/interrupt pc
+    eipsw: Reg, // exception/interrup psw
+    fepc: Reg, // fatal duplexed exception pc
+    fepsw: Reg, // duplexed exception psw
+    ecr: Reg, // exception cause register
+    adtre: Reg, // address trap register for execution
+    chcw: Reg, // cache control word
+    tkcw: Reg, // task control word
+    pir: Reg, // Processor ID Register
 
-    pub fn new(allocator: *Allocator, cart: *Cart, wram: []u8) Cpu {
-        var bus = Bus.new(allocator, cart, wram);
+    pub fn new(allocator: *Allocator, cart: *Cart) Cpu {
+        var bus = Bus.new(allocator);
 
         return Cpu{
             .bus = bus,
@@ -50,104 +53,291 @@ pub const Cpu = struct {
             .pir = Reg(0),
         };
     }
+
+    pub fn boot(self: *Cpu, vip: *Vip, vsu: *Vsu, wram: []u8, cart: *Cart) void {
+        self.bus.init(vip, vsu, wram, cart);
+    }
+
+    pub fn run(self: *Cpu) void {
+        while (true) {
+            const word = self.bus.read_halfword(self.pc) catch unreachable;
+            const opcode = (word & 0xfc00) >> 10;
+
+            std.debug.warn("0x{x}\t{x}\t", self.pc, word);
+            INST_TABLE[opcode](self, word);
+        }
+    }
 };
 
-fn illegal(cpu: *Cpu, word: u32) void {
+pub fn illegal(cpu: *Cpu, word: u32) void {
     std.debug.warn("Illegal opcode: 0x{x}\n", word);
+    std.process.exit(1);
 }
 
-fn mov(cpu: *Cpu, word: u32) void {}
+// move register
+pub fn mov(cpu: *Cpu, word: u32) void {
+    std.debug.warn("mov 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn add(cpu: *Cpu, word: u32) void {}
+// add register
+pub fn add(cpu: *Cpu, word: u32) void {
+    std.debug.warn("add 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn sub(cpu: *Cpu, word: u32) void {}
+// subtract
+pub fn sub(cpu: *Cpu, word: u32) void {
+    std.debug.warn("sub 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn cmp(cpu: *Cpu, word: u32) void {}
+pub fn cmp(cpu: *Cpu, word: u32) void {
+    std.debug.warn("cmp 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn shl(cpu: *Cpu, word: u32) void {}
+pub fn shl(cpu: *Cpu, word: u32) void {
+    std.debug.warn("sl 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn shr(cpu: *Cpu, word: u32) void {}
+pub fn shr(cpu: *Cpu, word: u32) void {
+    std.debug.warn("shr 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn jmp(cpu: *Cpu, word: u32) void {}
+pub fn jmp(cpu: *Cpu, word: u32) void {
+    std.debug.warn("jmp 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn sar(cpu: *Cpu, word: u32) void {}
+pub fn sar(cpu: *Cpu, word: u32) void {
+    std.debug.warn("sar 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn mul(cpu: *Cpu, word: u32) void {}
+pub fn mul(cpu: *Cpu, word: u32) void {
+    std.debug.warn("mul 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn div(cpu: *Cpu, word: u32) void {}
+pub fn div(cpu: *Cpu, word: u32) void {
+    std.debug.warn("div 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn mulu(cpu: *Cpu, word: u32) void {}
+pub fn mulu(cpu: *Cpu, word: u32) void {
+    std.debug.warn("mulu 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn divu(cpu: *Cpu, word: u32) void {}
+pub fn divu(cpu: *Cpu, word: u32) void {
+    std.debug.warn("divu 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn orop(cpu: *Cpu, word: u32) void {}
+pub fn orop(cpu: *Cpu, word: u32) void {
+    std.debug.warn("or 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn andop(cpu: *Cpu, word: u32) void {}
+pub fn andop(cpu: *Cpu, word: u32) void {
+    std.debug.warn("and 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn xor(cpu: *Cpu, word: u32) void {}
+pub fn xor(cpu: *Cpu, word: u32) void {
+    std.debug.warn("xor 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn not(cpu: *Cpu, word: u32) void {}
+pub fn not(cpu: *Cpu, word: u32) void {
+    std.debug.warn("not 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn setf(cpu: *Cpu, word: u32) void {}
+pub fn movi(cpu: *Cpu, word: u32) void {
+    std.debug.warn("movi 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn cli(cpu: *Cpu, word: u32) void {}
+pub fn cmpi(cpu: *Cpu, word: u32) void {
+    std.debug.warn("cmpi 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn trap(cpu: *Cpu, word: u32) void {}
+pub fn shli(cpu: *Cpu, word: u32) void {
+    std.debug.warn("shli 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn reti(cpu: *Cpu, word: u32) void {}
+pub fn shri(cpu: *Cpu, word: u32) void {
+    std.debug.warn("shri 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn halt(cpu: *Cpu, word: u32) void {}
+pub fn cli(cpu: *Cpu, word: u32) void {
+    std.debug.warn("cli 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn ldsr(cpu: *Cpu, word: u32) void {}
+pub fn sari(cpu: *Cpu, word: u32) void {
+    std.debug.warn("sari 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn stsr(cpu: *Cpu, word: u32) void {}
+pub fn setf(cpu: *Cpu, word: u32) void {
+    std.debug.warn("setf 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn sei(cpu: *Cpu, word: u32) void {}
+pub fn trap(cpu: *Cpu, word: u32) void {
+    std.debug.warn("trap 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn bit_string(cpu: *Cpu, word: u32) void {}
+pub fn reti(cpu: *Cpu, word: u32) void {
+    std.debug.warn("reti 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn bcond(cpu: *Cpu, word: u32) void {}
+pub fn halt(cpu: *Cpu, word: u32) void {
+    std.debug.warn("halt 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn movea(cpu: *Cpu, word: u32) void {}
+pub fn ldsr(cpu: *Cpu, word: u32) void {
+    std.debug.warn("ldr 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn addi(cpu: *Cpu, word: u32) void {}
+pub fn stsr(cpu: *Cpu, word: u32) void {
+    std.debug.warn("stsr 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn jr(cpu: *Cpu, word: u32) void {}
+pub fn sei(cpu: *Cpu, word: u32) void {
+    std.debug.warn("sei 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn jal(cpu: *Cpu, word: u32) void {}
+pub fn bit_string(cpu: *Cpu, word: u32) void {
+    std.debug.warn("bit_string 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn ori(cpu: *Cpu, word: u32) void {}
+pub fn bcond(cpu: *Cpu, word: u32) void {
+    std.debug.warn("bcond 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn andi(cpu: *Cpu, word: u32) void {}
+pub fn movea(cpu: *Cpu, word: u32) void {
+    std.debug.warn("movea 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn xori(cpu: *Cpu, word: u32) void {}
+pub fn addi(cpu: *Cpu, word: u32) void {
+    std.debug.warn("addi 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn movhi(cpu: *Cpu, word: u32) void {}
+pub fn jr(cpu: *Cpu, word: u32) void {
+    std.debug.warn("jr 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn ldb(cpu: *Cpu, word: u32) void {}
+pub fn jal(cpu: *Cpu, word: u32) void {
+    std.debug.warn("jal 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn ldh(cpu: *Cpu, word: u32) void {}
+pub fn ori(cpu: *Cpu, word: u32) void {
+    std.debug.warn("ori 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn ldw(cpu: *Cpu, word: u32) void {}
+pub fn andi(cpu: *Cpu, word: u32) void {
+    std.debug.warn("andi 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn stb(cpu: *Cpu, word: u32) void {}
+pub fn xori(cpu: *Cpu, word: u32) void {
+    std.debug.warn("xori 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn sth(cpu: *Cpu, word: u32) void {}
+pub fn movhi(cpu: *Cpu, word: u32) void {
+    std.debug.warn("movhi 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn stw(cpu: *Cpu, word: u32) void {}
+pub fn ldb(cpu: *Cpu, word: u32) void {
+    std.debug.warn("ldb 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn inb(cpu: *Cpu, word: u32) void {}
+pub fn ldh(cpu: *Cpu, word: u32) void {
+    std.debug.warn("ldh 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn inh(cpu: *Cpu, word: u32) void {}
+pub fn ldw(cpu: *Cpu, word: u32) void {
+    std.debug.warn("ldw 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn caxi(cpu: *Cpu, word: u32) void {}
+pub fn stb(cpu: *Cpu, word: u32) void {
+    std.debug.warn("stb 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn inw(cpu: *Cpu, word: u32) void {}
+pub fn sth(cpu: *Cpu, word: u32) void {
+    std.debug.warn("sth 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn outb(cpu: *Cpu, word: u32) void {}
+pub fn stw(cpu: *Cpu, word: u32) void {
+    std.debug.warn("stw 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn outh(cpu: *Cpu, word: u32) void {}
+pub fn inb(cpu: *Cpu, word: u32) void {
+    std.debug.warn("inb 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn float(cpu: *Cpu, word: u32) void {}
+pub fn inh(cpu: *Cpu, word: u32) void {
+    std.debug.warn("inh 0x{x}\n", word);
+    cpu.pc += 2;
+}
 
-fn outw(cpu: *Cpu, word: u32) void {}
+pub fn caxi(cpu: *Cpu, word: u32) void {
+    std.debug.warn("caxi 0x{x}\n", word);
+    cpu.pc += 2;
+}
+
+pub fn inw(cpu: *Cpu, word: u32) void {
+    std.debug.warn("inw 0x{x}\n", word);
+    cpu.pc += 2;
+}
+
+pub fn outb(cpu: *Cpu, word: u32) void {
+    std.debug.warn("outb 0x{x}\n", word);
+    cpu.pc += 2;
+}
+
+pub fn outh(cpu: *Cpu, word: u32) void {
+    std.debug.warn("outh 0x{x}\n", word);
+    cpu.pc += 2;
+}
+
+pub fn float(cpu: *Cpu, word: u32) void {
+    std.debug.warn("float 0x{x}\n", word);
+    cpu.pc += 2;
+}
+
+pub fn outw(cpu: *Cpu, word: u32) void {
+    std.debug.warn("outw 0x{x}\n", word);
+    cpu.pc += 2;
+}

@@ -4,7 +4,7 @@ const Allocator = std.mem.Allocator;
 const Vb = @import("vb.zig").Vb;
 
 pub fn main() anyerror!void {
-    var arena = std.heap.ArenaAllocator.init(std.heap.direct_allocator);
+    var arena = std.heap.ArenaAllocator.init(std.heap.c_allocator);
     defer arena.deinit();
 
     const allocator = &arena.allocator;
