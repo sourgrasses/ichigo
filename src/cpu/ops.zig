@@ -1,7 +1,7 @@
 const cpu = @import("cpu.zig");
 const Cpu = cpu.Cpu;
 
-pub const Instruction = fn (cpu: *Cpu, word: u32) void;
+pub const Instruction = fn (cpu: *Cpu, halfword: u16) void;
 
 pub const INST_TABLE = [64]Instruction{
     // 000000 - 001111
