@@ -33,10 +33,15 @@ pub const Cpu = struct {
             .bus = bus,
 
             .regs = [32]Reg{
-                Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0),
-                Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0),
-                Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0),
-                Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0), Reg(0),
+                //               🌯🌯🌯🌯🌯🌯🌯🌯🌯
+                Reg(0),          Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe),
+                Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe),
+                Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe),
+                Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe),
+                Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe),
+                Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe),
+                Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe),
+                Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe),
             },
 
             .pc = Reg(0xfffffff0),
@@ -63,7 +68,7 @@ pub const Cpu = struct {
             const halfword = self.bus.read_halfword(self.pc) catch unreachable;
             const opcode = (halfword & 0xfc00) >> 10;
 
-            std.debug.warn("0x{x}\t{X}\t", self.pc, halfword);
+            std.debug.warn("0x{x}\t{x}\t", self.pc, halfword);
             INST_TABLE[opcode](self, halfword);
         }
     }
@@ -169,7 +174,7 @@ pub fn jmp(cpu: *Cpu, halfword: u16) void {
     const r1 = @intCast(usize, halfword & 0x000f);
     cpu.pc = cpu.regs[r1] & 0xfffffffe;
 
-    std.debug.warn("jmp r{}\n", r1);
+    std.debug.warn("jmp [r{}]\n", r1);
 }
 
 pub fn sar(cpu: *Cpu, halfword: u16) void {
@@ -217,33 +222,44 @@ pub fn not(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
-pub fn movi(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("movi 0x{x}\n", halfword);
+pub fn mov2(cpu: *Cpu, halfword: u16) void {
+    std.debug.warn("mov2 0x{x}\n", halfword);
     cpu.pc += 2;
 }
 
-pub fn cmpi(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("cmpi 0x{x}\n", halfword);
+pub fn add2(cpu: *Cpu, halfword: u16) void {
+    const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
+    const imm = halfword & 0x001f;
+
+    cpu.regs[r2] = sign_extend(imm);
+
+    std.debug.warn("add {}, r{}\n", imm, r2);
     cpu.pc += 2;
 }
 
-pub fn shli(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("shli 0x{x}\n", halfword);
+pub fn cmp2(cpu: *Cpu, halfword: u16) void {
+    std.debug.warn("cmp2 0x{x}\n", halfword);
     cpu.pc += 2;
 }
 
-pub fn shri(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("shri 0x{x}\n", halfword);
+pub fn shl2(cpu: *Cpu, halfword: u16) void {
+    std.debug.warn("shl2 0x{x}\n", halfword);
     cpu.pc += 2;
 }
 
+pub fn shr2(cpu: *Cpu, halfword: u16) void {
+    std.debug.warn("shr2 0x{x}\n", halfword);
+    cpu.pc += 2;
+}
+
+// Nintendo-specific
 pub fn cli(cpu: *Cpu, halfword: u16) void {
     std.debug.warn("cli 0x{x}\n", halfword);
     cpu.pc += 2;
 }
 
-pub fn sari(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("sari 0x{x}\n", halfword);
+pub fn sar2(cpu: *Cpu, halfword: u16) void {
+    std.debug.warn("sar2 0x{x}\n", halfword);
     cpu.pc += 2;
 }
 
@@ -283,6 +299,7 @@ pub fn stsr(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// Nintendo-specific
 pub fn sei(cpu: *Cpu, halfword: u16) void {
     std.debug.warn("sei 0x{x}\n", halfword);
     cpu.pc += 2;
@@ -294,8 +311,75 @@ pub fn bit_string(cpu: *Cpu, halfword: u16) void {
 }
 
 pub fn bcond(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("bcond 0x{x}\n", halfword);
-    cpu.pc += 2;
+    const cond = @intCast(u4, (halfword & 0x1e00) >> 9);
+    const disp = halfword & 0x01ff;
+
+    switch (cond) {
+        0x0 => {
+            std.debug.warn("bv 0x{x}\n", halfword);
+            cpu.pc += 2;
+        },
+        0x1 => {
+            std.debug.warn("bl 0x{x}\n", halfword);
+            cpu.pc += 2;
+        },
+        0x2 => {
+            std.debug.warn("be 0x{x}\n", halfword);
+            cpu.pc += 2;
+        },
+        0x3 => {
+            std.debug.warn("bnh 0x{x}\n", halfword);
+            cpu.pc += 2;
+        },
+        0x4 => {
+            std.debug.warn("bn 0x{x}\n", halfword);
+            cpu.pc += 2;
+        },
+        0x5 => {
+            std.debug.warn("br 0x{x}\n", halfword);
+            cpu.pc += 2;
+        },
+        0x6 => {
+            std.debug.warn("blt 0x{x}\n", halfword);
+            cpu.pc += 2;
+        },
+        0x7 => {
+            std.debug.warn("ble 0x{x}\n", halfword);
+            cpu.pc += 2;
+        },
+        0x8 => {
+            std.debug.warn("bnv 0x{x}\n", halfword);
+            cpu.pc += 2;
+        },
+        0x9 => {
+            std.debug.warn("bnv 0x{x}\n", halfword);
+            cpu.pc += 2;
+        },
+        0xa => {
+            std.debug.warn("bnz 0x{x}\n", halfword);
+            cpu.pc += 2;
+        },
+        0xb => {
+            std.debug.warn("bh 0x{x}\n", halfword);
+            cpu.pc += 2;
+        },
+        0xc => {
+            std.debug.warn("bp 0x{x}\n", halfword);
+            cpu.pc += 2;
+        },
+        0xd => {
+            std.debug.warn("nop 0x{x}\n", halfword);
+            cpu.pc += 2;
+        },
+        0xe => {
+            std.debug.warn("bge 0x{x}\n", halfword);
+            cpu.pc += 2;
+        },
+        0xf => {
+            std.debug.warn("bgt 0x{x}\n", halfword);
+            cpu.pc += 2;
+        },
+    }
 }
 
 pub fn movea(cpu: *Cpu, halfword: u16) void {
@@ -307,7 +391,7 @@ pub fn movea(cpu: *Cpu, halfword: u16) void {
     const val = sign_extend(imm);
     cpu.regs[r2] = cpu.regs[r1] +% val;
 
-    std.debug.warn("movea {x}, r{}, r{}\n", imm, r1, r2);
+    std.debug.warn("movea 0x{x}, r{}, r{}\n", imm, r1, r2);
     cpu.pc += 2;
 }
 
@@ -321,7 +405,7 @@ pub fn addi(cpu: *Cpu, halfword: u16) void {
 
     // TODO: flags
 
-    std.debug.warn("addi 0x{x}\n", halfword);
+    std.debug.warn("addi {}, r{}, r{}\n", @bitCast(i16, imm), r1, r2);
     cpu.pc += 2;
 }
 
@@ -358,7 +442,7 @@ pub fn movhi(cpu: *Cpu, halfword: u16) void {
 
     cpu.regs[r2] = cpu.regs[r1] +% @intCast(u32, imm) << 16;
 
-    std.debug.warn("movhi {x}, r{} r{}\n", imm, r1, r2);
+    std.debug.warn("movhi 0x{x}, r{} r{}\n", imm, r1, r2);
     cpu.pc += 2;
 }
 

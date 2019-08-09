@@ -11,8 +11,8 @@ pub const INST_TABLE = [64]Instruction{
     cpu.orop,  cpu.andop, cpu.xor,     cpu.not,
 
     // 010000 - 011111
-    cpu.movi,  cpu.addi,  cpu.setf,    cpu.cmpi,
-    cpu.shli,  cpu.shri,  cpu.cli,     cpu.sari,
+    cpu.mov2,  cpu.add2,  cpu.setf,    cpu.cmp2,
+    cpu.shl2,  cpu.shr2,  cpu.cli,     cpu.sar2,
     cpu.trap,  cpu.reti,  cpu.halt,    cpu.illegal,
     cpu.ldsr,  cpu.stsr,  cpu.sei,     cpu.bit_string,
 
