@@ -11,7 +11,7 @@ Virtual Boy emulator in Zig.
 
 ### disassembler
 - [ ] correct disassembly for all opcodes
-- [ ] break disassembler out from regular cpu functions
+- [x] break disassembler out from regular cpu functions
 - [ ] interactive debugger tbh
 
 ### memory map routing/bus
