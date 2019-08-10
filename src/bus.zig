@@ -102,14 +102,18 @@ pub const Bus = struct {
         const s = try self.get_slice(offset);
         const mask = s.len - 1;
         const moffset = offset & mask;
-        std.mem.writeIntLittle(u32, s[moffset .. moffset + 4], val);
+
+        var word = [4]u8{ s[moffset], s[moffset + 1], s[moffset + 2], s[moffset + 3] };
+        mem.writeIntLittle(u32, &word, val);
     }
 
     fn write_halfword(self: *Bus, offset: usize, val: u16) !void {
         const s = try self.get_slice(offset);
         const mask = s.len - 1;
         const moffset = offset & mask;
-        mem.writeIntLittle(u32, s[moffset .. moffset + 2], val);
+
+        var halfword = [2]u8{ s[moffset], s[moffset + 1] };
+        mem.writeIntLittle(u16, &halfword, val);
     }
 
     fn write_byte(self: *Bus, offset: usize, val: u8) !void {

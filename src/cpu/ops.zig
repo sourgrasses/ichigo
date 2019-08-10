@@ -1,4 +1,6 @@
 const cpu = @import("cpu.zig");
+const debug = @import("debug.zig");
+
 const Cpu = cpu.Cpu;
 
 pub const Instruction = fn (cpu: *Cpu, halfword: u16) void;
@@ -27,6 +29,32 @@ pub const INST_TABLE = [64]Instruction{
     cpu.stb,   cpu.sth,   cpu.illegal, cpu.stw,
     cpu.inb,   cpu.inh,   cpu.caxi,    cpu.inw,
     cpu.outb,  cpu.outh,  cpu.float,   cpu.outw,
+};
+
+pub const DEBUG_INST_TABLE = [64]Instruction{
+    // 000000 - 001111
+    debug.mov,   debug.add,   debug.sub,     debug.cmp,
+    debug.shl,   debug.shr,   debug.jmp,     debug.sar,
+    debug.mul,   debug.div,   debug.mulu,    debug.divu,
+    debug.orop,  debug.andop, debug.xor,     debug.not,
+
+    // 010000 - 011111
+    debug.mov2,  debug.add2,  debug.setf,    debug.cmp2,
+    debug.shl2,  debug.shr2,  debug.cli,     debug.sar2,
+    debug.trap,  debug.reti,  debug.halt,    debug.illegal,
+    debug.ldsr,  debug.stsr,  debug.sei,     debug.bit_string,
+
+    // 100000 - 101111
+    debug.bcond, debug.bcond, debug.bcond,   debug.bcond,
+    debug.bcond, debug.bcond, debug.bcond,   debug.bcond,
+    debug.movea, debug.addi,  debug.jr,      debug.jal,
+    debug.ori,   debug.andi,  debug.xori,    debug.movhi,
+
+    // 110000 - 111111
+    debug.ldb,   debug.ldh,   debug.illegal, debug.ldw,
+    debug.stb,   debug.sth,   debug.illegal, debug.stw,
+    debug.inb,   debug.inh,   debug.caxi,    debug.inw,
+    debug.outb,  debug.outh,  debug.float,   debug.outw,
 };
 
 // bit string instructions - opcode = 011111
