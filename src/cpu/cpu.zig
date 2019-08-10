@@ -162,6 +162,14 @@ fn sign_extend(val: u16) u32 {
     }
 }
 
+fn sign_extend5(val: u5) u32 {
+    if (@bitCast(i5, val) < 0) {
+        return @intCast(u32, val) | 0xffffffe0;
+    } else {
+        return @intCast(u32, val);
+    }
+}
+
 pub fn illegal(cpu: *Cpu, halfword: u16) void {
     std.process.exit(1);
 }
@@ -240,9 +248,9 @@ pub fn not(cpu: *Cpu, halfword: u16) void {
 
 pub fn mov2(cpu: *Cpu, halfword: u16) void {
     const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
-    const imm = @bitCast(i5, @intCast(u5, halfword & 0x001f));
+    const imm = @intCast(u5, halfword & 0x001f);
 
-    cpu.regs[r2] = @intCast(u32, imm);
+    cpu.regs[r2] = sign_extend5(imm);
     cpu.pc += 2;
 }
 
@@ -315,9 +323,9 @@ pub fn ldsr(cpu: *Cpu, halfword: u16) void {
     const imm = @intCast(u5, halfword & 0x001f);
 
     const reg = cpu.get_sysreg_ptr(imm);
-    if (imm == 5) {
-        cpu.regs[r2] = cpu.psw;
-    }
+    //if (imm == 5) {
+    //    cpu.regs[r2] = cpu.psw;
+    //}
     reg.* = cpu.regs[r2];
 
     cpu.pc += 2;
@@ -443,6 +451,7 @@ pub fn movea(cpu: *Cpu, halfword: u16) void {
 
     const val = sign_extend(imm);
     cpu.regs[r2] = cpu.regs[r1] +% val;
+
     cpu.pc += 2;
 }
 
@@ -507,7 +516,7 @@ pub fn stb(cpu: *Cpu, halfword: u16) void {
     const r1 = @intCast(usize, halfword & 0x001f);
     const disp = cpu.bus.read_halfword(cpu.pc) catch unreachable;
 
-    const addr = cpu.regs[r1] +% sign_extend(disp);
+    const addr = (cpu.regs[r1] +% sign_extend(disp)) & 0xfffffffe;
     const byte = @intCast(u8, cpu.regs[r2] & 0x000000ff);
     cpu.bus.write_byte(addr, byte) catch unreachable;
     cpu.pc += 2;
@@ -517,9 +526,9 @@ pub fn sth(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
     const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
     const r1 = @intCast(usize, halfword & 0x001f);
-    const imm = cpu.bus.read_halfword(cpu.pc) catch unreachable;
+    const disp = cpu.bus.read_halfword(cpu.pc) catch unreachable;
 
-    const addr = cpu.regs[r1] +% sign_extend(imm);
+    const addr = (cpu.regs[r1] +% sign_extend(disp)) & 0xfffffffe;
     const whalfword = @intCast(u16, cpu.regs[r2] & 0x0000ffff);
     cpu.bus.write_halfword(addr, whalfword) catch unreachable;
     cpu.pc += 2;
@@ -529,9 +538,9 @@ pub fn stw(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
     const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
     const r1 = @intCast(usize, halfword & 0x001f);
-    const imm = cpu.bus.read_halfword(cpu.pc) catch unreachable;
+    const disp = cpu.bus.read_halfword(cpu.pc) catch unreachable;
 
-    const addr = cpu.regs[r1] +% sign_extend(imm);
+    const addr = (cpu.regs[r1] +% sign_extend(disp)) & 0xfffffffe;
     cpu.bus.write_word(addr, cpu.regs[r2]) catch unreachable;
     cpu.pc += 2;
 }

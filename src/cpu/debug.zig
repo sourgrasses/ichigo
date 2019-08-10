@@ -80,7 +80,7 @@ pub fn not(cpu: *Cpu, halfword: u16) void {
 
 pub fn mov2(cpu: *Cpu, halfword: u16) void {
     const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
-    const imm = halfword & 0x001f;
+    const imm = @bitCast(i5, @intCast(u5, halfword & 0x001f));
 
     std.debug.warn("mov {}, r{}\n", imm, r2);
 }

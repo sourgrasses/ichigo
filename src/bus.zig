@@ -1,10 +1,12 @@
 const std = @import("std");
+const hw = @import("hw/hw.zig");
 const mem = std.mem;
 
 const Allocator = mem.Allocator;
 const ArrayList = std.ArrayList;
 
 const Cart = @import("cart.zig").Cart;
+const Reg = @import("cpu/regs.zig").Reg;
 const Vip = @import("hw/vip.zig").Vip;
 const Vsu = @import("hw/vsu.zig").Vsu;
 
@@ -35,6 +37,9 @@ pub const Bus = struct {
     // this with a more sped-efficient data structure once we're trying
     // to run things ~at speed~
     regions: ArrayList(MemRegion),
+    com: hw.Com,
+    game_pad: hw.GamePad,
+    timer: hw.Timer,
 
     pub fn new(allocator: *Allocator) Bus {
         var regions = ArrayList(MemRegion).init(allocator);
@@ -42,6 +47,9 @@ pub const Bus = struct {
 
         return Bus{
             .regions = regions,
+            .com = hw.Com.new(),
+            .game_pad = hw.GamePad.new(),
+            .timer = hw.Timer.new(),
         };
     }
 
@@ -62,9 +70,7 @@ pub const Bus = struct {
         try self.regions.append(region);
     }
 
-    fn map_io(self: *Bus, dsio: *ds.Io) void {}
-
-    pub fn get_slice(self: *Bus, offset: usize) ![]u8 {
+    fn get_slice(self: *Bus, offset: usize) ![]u8 {
         const moffset = offset & MIRROR_MASK;
 
         for (self.regions.toSlice()) |region| {
@@ -76,50 +82,96 @@ pub const Bus = struct {
         return MemError.RegionNotFound;
     }
 
+    fn get_hw_ctrl_reg(self: *Bus, offset: usize) !*Reg {
+        return switch (offset) {
+            0x02000000 => &self.com.link_control,
+            0x02000004 => &self.com.auxiliary_link,
+            0x02000008 => &self.com.link_transmit,
+            0x0200000C => &self.com.link_receive,
+            0x02000010 => &self.game_pad.input_high,
+            0x02000014 => &self.game_pad.input_low,
+            0x02000018 => &self.timer.tcr,
+            0x0200001C => &self.timer.tcr_reload_low,
+            0x02000020 => &self.timer.tcr_reload_high,
+            0x02000024 => &self.timer.wcr,
+            0x02000028 => &self.game_pad.input_control,
+            else => MemError.RegionNotFound,
+        };
+    }
+
     fn read_word(self: *Bus, offset: usize) !u32 {
-        const s = try self.get_slice(offset);
-        // use a mask to get the relative offset within the memory region
-        const mask = s.len - 1;
-        const moffset = offset & mask;
-        return std.mem.readIntSliceLittle(u32, s[moffset .. moffset + 4]);
+        if (offset >= 0x02000000 and offset <= 0x02ffffff) {
+            return try self.get_hw_ctrl_reg(offset).*;
+        } else {
+            const s = try self.get_slice(offset);
+            // use a mask to get the relative offset within the memory region
+            const mask = s.len - 1;
+            const moffset = offset & mask;
+            return std.mem.readIntSliceLittle(u32, s[moffset .. moffset + 4]);
+        }
     }
 
     fn read_halfword(self: *Bus, offset: usize) !u16 {
-        const s = try self.get_slice(offset);
-        const mask = s.len - 1;
-        const moffset = offset & mask;
-        return std.mem.readIntSliceLittle(u16, s[moffset .. moffset + 2]);
+        if (offset >= 0x02000000 and offset <= 0x02ffffff) {
+            const reg = try self.get_hw_ctrl_reg(offset);
+            return @intCast(u16, reg.* & 0x00ff);
+        } else {
+            const s = try self.get_slice(offset);
+            const mask = s.len - 1;
+            const moffset = offset & mask;
+            return std.mem.readIntSliceLittle(u16, s[moffset .. moffset + 2]);
+        }
     }
 
     fn read_byte(self: *Bus, offset: usize) !u8 {
-        const s = try self.get_slice(offset);
-        const mask = s.len - 1;
-        const moffset = offset & mask;
-        return s[moffset];
+        if (offset >= 0x02000000 and offset <= 0x02ffffff) {
+            const reg = try self.get_hw_ctrl_reg(offset);
+            return @intCast(u8, reg.* & 0x000f);
+        } else {
+            const s = try self.get_slice(offset);
+            const mask = s.len - 1;
+            const moffset = offset & mask;
+            return s[moffset];
+        }
     }
 
     fn write_word(self: *Bus, offset: usize, val: u32) !void {
-        const s = try self.get_slice(offset);
-        const mask = s.len - 1;
-        const moffset = offset & mask;
+        if (offset >= 0x02000000 and offset <= 0x02ffffff) {
+            const reg = try self.get_hw_ctrl_reg(offset);
+            reg.* = val;
+        } else {
+            const s = try self.get_slice(offset);
+            const mask = s.len - 1;
+            const moffset = offset & mask;
 
-        var word = [4]u8{ s[moffset], s[moffset + 1], s[moffset + 2], s[moffset + 3] };
-        mem.writeIntLittle(u32, &word, val);
+            var word = [4]u8{ s[moffset], s[moffset + 1], s[moffset + 2], s[moffset + 3] };
+            mem.writeIntLittle(u32, &word, val);
+        }
     }
 
     fn write_halfword(self: *Bus, offset: usize, val: u16) !void {
-        const s = try self.get_slice(offset);
-        const mask = s.len - 1;
-        const moffset = offset & mask;
+        if (offset >= 0x02000000 and offset <= 0x02ffffff) {
+            const reg = try self.get_hw_ctrl_reg(offset);
+            reg.* = @intCast(u32, val);
+        } else {
+            const s = try self.get_slice(offset);
+            const mask = s.len - 1;
+            const moffset = offset & mask;
 
-        var halfword = [2]u8{ s[moffset], s[moffset + 1] };
-        mem.writeIntLittle(u16, &halfword, val);
+            var halfword = [2]u8{ s[moffset], s[moffset + 1] };
+            mem.writeIntLittle(u16, &halfword, val);
+        }
     }
 
     fn write_byte(self: *Bus, offset: usize, val: u8) !void {
-        const s = try self.get_slice(offset);
-        const mask = s.len - 1;
-        const moffset = offset & mask;
-        s[moffset] = val;
+        if (offset >= 0x02000000 and offset <= 0x02ffffff) {
+            const reg = try self.get_hw_ctrl_reg(offset);
+            reg.* = @intCast(u32, val);
+        } else {
+            const s = try self.get_slice(offset);
+            const mask = s.len - 1;
+            const moffset = offset & mask;
+            s[moffset] = val;
+        }
     }
 };
