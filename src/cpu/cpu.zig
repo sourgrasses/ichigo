@@ -72,8 +72,10 @@ pub const Cpu = struct {
             const debug = true;
 
             if (debug) {
-                std.debug.warn("0x{x}\t{x}\t", self.pc, halfword);
+                //if (self.pc != 0xfffbe96e and self.pc != 0xfffbe970) {
+                std.debug.warn("0x{x:08}\t{x:04}\t", self.pc, halfword);
                 DEBUG_INST_TABLE[opcode](self, halfword);
+                //}
             }
             INST_TABLE[opcode](self, halfword);
         }
@@ -154,7 +156,7 @@ pub const Cpu = struct {
     }
 };
 
-fn sign_extend(val: u16) u32 {
+pub fn sign_extend(val: u16) u32 {
     if (@bitCast(i16, val) < 0) {
         return @intCast(u32, val) | 0xffff0000;
     } else {
@@ -162,9 +164,17 @@ fn sign_extend(val: u16) u32 {
     }
 }
 
-fn sign_extend5(val: u5) u32 {
+pub fn sign_extend5(val: u5) u32 {
     if (@bitCast(i5, val) < 0) {
         return @intCast(u32, val) | 0xffffffe0;
+    } else {
+        return @intCast(u32, val);
+    }
+}
+
+pub fn sign_extend26(val: u26) u32 {
+    if (@bitCast(i26, val) < 0) {
+        return @intCast(u32, val) | 0xfc000000;
     } else {
         return @intCast(u32, val);
     }
@@ -194,6 +204,32 @@ pub fn sub(cpu: *Cpu, halfword: u16) void {
 }
 
 pub fn cmp(cpu: *Cpu, halfword: u16) void {
+    const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
+    const r1 = @intCast(usize, halfword & 0x001f);
+
+    const res = cpu.regs[r2] -% cpu.regs[r1];
+
+    if (res < cpu.regs[r2]) {
+        cpu.set_cy();
+    } else {
+        cpu.clear_cy();
+    }
+    if ((res & 0x10000000) != (cpu.regs[r2] & 0x10000000)) {
+        cpu.set_ov();
+    } else {
+        cpu.clear_ov();
+    }
+    if (@bitCast(i32, res) < 0) {
+        cpu.set_s();
+    } else {
+        cpu.clear_s();
+    }
+    if (res == 0) {
+        cpu.set_z();
+    } else {
+        cpu.clear_z();
+    }
+
     cpu.pc += 2;
 }
 
@@ -206,7 +242,7 @@ pub fn shr(cpu: *Cpu, halfword: u16) void {
 }
 
 pub fn jmp(cpu: *Cpu, halfword: u16) void {
-    const r1 = @intCast(usize, halfword & 0x000f);
+    const r1 = @intCast(usize, halfword & 0x001f);
     cpu.pc = cpu.regs[r1] & 0xfffffffe;
 }
 
@@ -470,10 +506,21 @@ pub fn addi(cpu: *Cpu, halfword: u16) void {
 
 pub fn jr(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
+    const upper = @intCast(u32, halfword & 0x00ff) << 16;
+    const lower = @intCast(u32, cpu.bus.read_halfword(cpu.pc) catch unreachable);
+    const disp = sign_extend26(@intCast(u26, (upper | lower)));
+
+    cpu.pc = cpu.pc +% disp & 0xfffffffe;
 }
 
 pub fn jal(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
+    const upper = @intCast(u32, halfword & 0x00ff) << 16;
+    const lower = @intCast(u32, cpu.bus.read_halfword(cpu.pc) catch unreachable);
+    const disp = sign_extend26(@intCast(u26, (upper | lower)));
+
+    cpu.regs[31] = cpu.pc + 2;
+    cpu.pc = cpu.pc +% disp & 0xfffffffe;
 }
 
 pub fn ori(cpu: *Cpu, halfword: u16) void {
