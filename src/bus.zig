@@ -101,7 +101,8 @@ pub const Bus = struct {
 
     fn read_word(self: *Bus, offset: usize) !u32 {
         if (offset >= 0x02000000 and offset <= 0x02ffffff) {
-            return try self.get_hw_ctrl_reg(offset).*;
+            const res = try self.get_hw_ctrl_reg(offset);
+            return res.*;
         } else {
             const s = try self.get_slice(offset);
             // use a mask to get the relative offset within the memory region

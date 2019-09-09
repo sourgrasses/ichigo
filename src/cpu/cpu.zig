@@ -72,10 +72,8 @@ pub const Cpu = struct {
             const debug = true;
 
             if (debug) {
-                //if (self.pc != 0xfffbe96e and self.pc != 0xfffbe970) {
                 std.debug.warn("0x{x:08}\t{x:04}\t", self.pc, halfword);
                 DEBUG_INST_TABLE[opcode](self, halfword);
-                //}
             }
             INST_TABLE[opcode](self, halfword);
         }
@@ -154,6 +152,29 @@ pub const Cpu = struct {
     fn clear_z(self: *Cpu) void {
         self.psw &= 0xfffffffe;
     }
+
+    fn set_flags(self: *Cpu, res: u32, old: u32) void {
+        if (res < old) {
+            self.set_cy();
+        } else {
+            self.clear_cy();
+        }
+        if ((res & 0x10000000) != (old & 0x10000000)) {
+            self.set_ov();
+        } else {
+            self.clear_ov();
+        }
+        if (@bitCast(i32, res) < 0) {
+            self.set_s();
+        } else {
+            self.clear_s();
+        }
+        if (res == 0) {
+            self.set_z();
+        } else {
+            self.clear_z();
+        }
+    }
 };
 
 pub fn sign_extend(val: u16) u32 {
@@ -167,6 +188,14 @@ pub fn sign_extend(val: u16) u32 {
 pub fn sign_extend5(val: u5) u32 {
     if (@bitCast(i5, val) < 0) {
         return @intCast(u32, val) | 0xffffffe0;
+    } else {
+        return @intCast(u32, val);
+    }
+}
+
+pub fn sign_extend8(val: u8) u32 {
+    if (@bitCast(i8, val) < 0) {
+        return @intCast(u32, val) | 0xffffff00;
     } else {
         return @intCast(u32, val);
     }
@@ -195,9 +224,17 @@ pub fn mov(cpu: *Cpu, halfword: u16) void {
 
 // add register
 pub fn add(cpu: *Cpu, halfword: u16) void {
+    const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
+    const r1 = @intCast(usize, halfword & 0x001f);
+
+    const res = cpu.regs[r2] +% cpu.regs[r1];
+    cpu.set_flags(res, cpu.regs[r2]);
+    cpu.regs[r2] = res;
+
     cpu.pc += 2;
 }
 
+// TODO
 // subtract
 pub fn sub(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
@@ -208,35 +245,17 @@ pub fn cmp(cpu: *Cpu, halfword: u16) void {
     const r1 = @intCast(usize, halfword & 0x001f);
 
     const res = cpu.regs[r2] -% cpu.regs[r1];
-
-    if (res < cpu.regs[r2]) {
-        cpu.set_cy();
-    } else {
-        cpu.clear_cy();
-    }
-    if ((res & 0x10000000) != (cpu.regs[r2] & 0x10000000)) {
-        cpu.set_ov();
-    } else {
-        cpu.clear_ov();
-    }
-    if (@bitCast(i32, res) < 0) {
-        cpu.set_s();
-    } else {
-        cpu.clear_s();
-    }
-    if (res == 0) {
-        cpu.set_z();
-    } else {
-        cpu.clear_z();
-    }
+    cpu.set_flags(res, cpu.regs[r2]);
 
     cpu.pc += 2;
 }
 
+// TODO
 pub fn shl(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn shr(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
@@ -246,38 +265,47 @@ pub fn jmp(cpu: *Cpu, halfword: u16) void {
     cpu.pc = cpu.regs[r1] & 0xfffffffe;
 }
 
+// TODO
 pub fn sar(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn mul(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn div(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn mulu(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn divu(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn orop(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn andop(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn xor(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn not(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
@@ -317,39 +345,48 @@ pub fn add2(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn cmp2(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn shl2(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn shr2(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 // Nintendo-specific
 pub fn cli(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn sar2(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn setf(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn trap(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn reti(cpu: *Cpu, halfword: u16) void {
-    cpu.pc += 2;
+    cpu.pc = cpu.regs[31];
 }
 
+// TODO
 pub fn halt(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
@@ -367,6 +404,7 @@ pub fn ldsr(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn stsr(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
@@ -377,6 +415,7 @@ pub fn sei(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn bit_string(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
@@ -497,9 +536,10 @@ pub fn addi(cpu: *Cpu, halfword: u16) void {
     const r1 = @intCast(usize, halfword & 0x001f);
     const imm = cpu.bus.read_halfword(cpu.pc) catch unreachable;
 
+    const old = cpu.regs[r2];
     cpu.regs[r2] = cpu.regs[r1] +% sign_extend(imm);
 
-    // TODO: flags
+    cpu.set_flags(cpu.regs[r2], old);
 
     cpu.pc += 2;
 }
@@ -523,14 +563,17 @@ pub fn jal(cpu: *Cpu, halfword: u16) void {
     cpu.pc = cpu.pc +% disp & 0xfffffffe;
 }
 
+// TODO
 pub fn ori(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn andi(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn xori(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
@@ -547,13 +590,37 @@ pub fn movhi(cpu: *Cpu, halfword: u16) void {
 
 pub fn ldb(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
+    const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
+    const r1 = @intCast(usize, halfword & 0x001f);
+    const disp = cpu.bus.read_halfword(cpu.pc) catch unreachable;
+
+    const addr = (cpu.regs[r1] +% sign_extend(disp)) & 0xfffffffe;
+    cpu.regs[r2] = sign_extend8(cpu.bus.read_byte(addr) catch unreachable);
+
+    cpu.pc += 2;
 }
 
 pub fn ldh(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
+    const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
+    const r1 = @intCast(usize, halfword & 0x001f);
+    const disp = cpu.bus.read_halfword(cpu.pc) catch unreachable;
+
+    const addr = (cpu.regs[r1] +% sign_extend(disp)) & 0xfffffffe;
+    cpu.regs[r2] = sign_extend(cpu.bus.read_halfword(addr) catch unreachable);
+
+    cpu.pc += 2;
 }
 
 pub fn ldw(cpu: *Cpu, halfword: u16) void {
+    cpu.pc += 2;
+    const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
+    const r1 = @intCast(usize, halfword & 0x001f);
+    const disp = cpu.bus.read_halfword(cpu.pc) catch unreachable;
+
+    const addr = (cpu.regs[r1] +% sign_extend(disp)) & 0xfffffffe;
+    cpu.regs[r2] = cpu.bus.read_word(addr) catch unreachable;
+
     cpu.pc += 2;
 }
 
@@ -592,34 +659,39 @@ pub fn stw(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn inb(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn inh(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn caxi(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
+// TODO
 pub fn inw(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
 pub fn outb(cpu: *Cpu, halfword: u16) void {
-    cpu.pc += 2;
+    stb(cpu, halfword);
 }
 
 pub fn outh(cpu: *Cpu, halfword: u16) void {
-    cpu.pc += 2;
+    sth(cpu, halfword);
 }
 
+// TODO
 pub fn float(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
 pub fn outw(cpu: *Cpu, halfword: u16) void {
-    cpu.pc += 2;
+    stw(cpu, halfword);
 }

@@ -1,5 +1,4 @@
 docs/
 roms/
 zig-cache/
-*.swp
 dump.S
