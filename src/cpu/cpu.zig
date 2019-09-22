@@ -74,6 +74,7 @@ pub const Cpu = struct {
             if (debug) {
                 std.debug.warn("0x{x:08}\t{x:04}\t", self.pc, halfword);
                 DEBUG_INST_TABLE[opcode](self, halfword);
+                //std.debug.warn("r3: {x:08}, r31: {x:08}\n", self.regs[3], self.regs[31]);
             }
             INST_TABLE[opcode](self, halfword);
         }
@@ -559,7 +560,7 @@ pub fn jal(cpu: *Cpu, halfword: u16) void {
     const lower = @intCast(u32, cpu.bus.read_halfword(cpu.pc) catch unreachable);
     const disp = sign_extend26(@intCast(u26, (upper | lower)));
 
-    cpu.regs[31] = cpu.pc + 2;
+    cpu.regs[31] = cpu.pc + 4;
     cpu.pc = cpu.pc +% disp & 0xfffffffe;
 }
 
@@ -620,7 +621,7 @@ pub fn ldw(cpu: *Cpu, halfword: u16) void {
 
     const addr = (cpu.regs[r1] +% sign_extend(disp)) & 0xfffffffe;
     cpu.regs[r2] = cpu.bus.read_word(addr) catch unreachable;
-    std.debug.warn("0x{x:08}: 0x{x:08}\n", cpu.regs[r1], cpu.bus.read_word(addr) catch unreachable);
+    //std.debug.warn("0x{x:08}: 0x{x:08}\n", cpu.regs[r1], cpu.bus.read_word(addr) catch unreachable);
 
     cpu.pc += 2;
 }
@@ -634,6 +635,7 @@ pub fn stb(cpu: *Cpu, halfword: u16) void {
     const addr = (cpu.regs[r1] +% sign_extend(disp)) & 0xfffffffe;
     const byte = @intCast(u8, cpu.regs[r2] & 0x000000ff);
     cpu.bus.write_byte(addr, byte) catch unreachable;
+    std.debug.warn("0x{x:08}: 0x{x:08}\n", cpu.regs[r1], cpu.bus.read_word(addr) catch unreachable);
     cpu.pc += 2;
 }
 
@@ -646,6 +648,7 @@ pub fn sth(cpu: *Cpu, halfword: u16) void {
     const addr = (cpu.regs[r1] +% sign_extend(disp)) & 0xfffffffe;
     const whalfword = @intCast(u16, cpu.regs[r2] & 0x0000ffff);
     cpu.bus.write_halfword(addr, whalfword) catch unreachable;
+    std.debug.warn("0x{x:08}: 0x{x:08}\n", cpu.regs[r1], cpu.bus.read_word(addr) catch unreachable);
     cpu.pc += 2;
 }
 
@@ -657,6 +660,7 @@ pub fn stw(cpu: *Cpu, halfword: u16) void {
 
     const addr = (cpu.regs[r1] +% sign_extend(disp)) & 0xfffffffe;
     cpu.bus.write_word(addr, cpu.regs[r2]) catch unreachable;
+    std.debug.warn("0x{x:08}: 0x{x:08}\n", cpu.regs[r1], cpu.bus.read_word(addr) catch unreachable);
     cpu.pc += 2;
 }
 
