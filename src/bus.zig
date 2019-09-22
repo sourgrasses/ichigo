@@ -145,8 +145,7 @@ pub const Bus = struct {
             const mask = s.len - 1;
             const moffset = offset & mask;
 
-            var word = [4]u8{ s[moffset], s[moffset + 1], s[moffset + 2], s[moffset + 3] };
-            mem.writeIntLittle(u32, &word, val);
+            mem.writeIntSliceLittle(u32, s[moffset..], val);
         }
     }
 
@@ -159,8 +158,7 @@ pub const Bus = struct {
             const mask = s.len - 1;
             const moffset = offset & mask;
 
-            var halfword = [2]u8{ s[moffset], s[moffset + 1] };
-            mem.writeIntLittle(u16, &halfword, val);
+            mem.writeIntLittle(u16, s[moffset..], val);
         }
     }
 
@@ -172,6 +170,7 @@ pub const Bus = struct {
             const s = try self.get_slice(offset);
             const mask = s.len - 1;
             const moffset = offset & mask;
+
             s[moffset] = val;
         }
     }

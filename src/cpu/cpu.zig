@@ -74,7 +74,6 @@ pub const Cpu = struct {
             if (debug) {
                 std.debug.warn("0x{x:08}\t{x:04}\t", self.pc, halfword);
                 DEBUG_INST_TABLE[opcode](self, halfword);
-                //std.debug.warn("r3: {x:08}, r31: {x:08}\n", self.regs[3], self.regs[31]);
             }
             INST_TABLE[opcode](self, halfword);
         }
@@ -174,6 +173,30 @@ pub const Cpu = struct {
             self.set_z();
         } else {
             self.clear_z();
+        }
+    }
+
+    fn dump_reg(self: Cpu, reg: usize) void {
+        std.debug.warn("r{}: {x:08}\n", reg, self.regs[reg]);
+    }
+
+    fn dump_regs(self: Cpu) void {
+        std.debug.warn("pc: {x:08}\n", self.pc);
+        std.debug.warn("psw: {x:08}\n", self.psw);
+        std.debug.warn("eipc: {x:08}\n", self.eipc);
+        std.debug.warn("eipsw: {x:08}\n", self.eipsw);
+        std.debug.warn("fepc: {x:08}\n", self.fepc);
+        std.debug.warn("fepsw: {x:08}\n", self.fepsw);
+        std.debug.warn("ecr: {x:08}\n", self.ecr);
+        std.debug.warn("adtre: {x:08}\n", self.adtre);
+        std.debug.warn("chcw: {x:08}\n", self.chcw);
+        std.debug.warn("tkcw: {x:08}\n", self.tkcw);
+        std.debug.warn("pir: {x:08}\n", self.pir);
+
+        var reg: usize = 0;
+        while (reg < 32) {
+            std.debug.warn("r{}: {x:08}\n", reg, self.regs[reg]);
+            reg += 1;
         }
     }
 };
@@ -555,9 +578,8 @@ pub fn jr(cpu: *Cpu, halfword: u16) void {
 }
 
 pub fn jal(cpu: *Cpu, halfword: u16) void {
-    cpu.pc += 2;
     const upper = @intCast(u32, halfword & 0x00ff) << 16;
-    const lower = @intCast(u32, cpu.bus.read_halfword(cpu.pc) catch unreachable);
+    const lower = @intCast(u32, cpu.bus.read_halfword(cpu.pc + 2) catch unreachable);
     const disp = sign_extend26(@intCast(u26, (upper | lower)));
 
     cpu.regs[31] = cpu.pc + 4;
@@ -621,7 +643,7 @@ pub fn ldw(cpu: *Cpu, halfword: u16) void {
 
     const addr = (cpu.regs[r1] +% sign_extend(disp)) & 0xfffffffe;
     cpu.regs[r2] = cpu.bus.read_word(addr) catch unreachable;
-    //std.debug.warn("0x{x:08}: 0x{x:08}\n", cpu.regs[r1], cpu.bus.read_word(addr) catch unreachable);
+    std.debug.warn("0x{x:08}: 0x{x:08}\n", cpu.regs[r1], cpu.bus.read_word(addr) catch unreachable);
 
     cpu.pc += 2;
 }
@@ -635,7 +657,6 @@ pub fn stb(cpu: *Cpu, halfword: u16) void {
     const addr = (cpu.regs[r1] +% sign_extend(disp)) & 0xfffffffe;
     const byte = @intCast(u8, cpu.regs[r2] & 0x000000ff);
     cpu.bus.write_byte(addr, byte) catch unreachable;
-    std.debug.warn("0x{x:08}: 0x{x:08}\n", cpu.regs[r1], cpu.bus.read_word(addr) catch unreachable);
     cpu.pc += 2;
 }
 
@@ -648,7 +669,6 @@ pub fn sth(cpu: *Cpu, halfword: u16) void {
     const addr = (cpu.regs[r1] +% sign_extend(disp)) & 0xfffffffe;
     const whalfword = @intCast(u16, cpu.regs[r2] & 0x0000ffff);
     cpu.bus.write_halfword(addr, whalfword) catch unreachable;
-    std.debug.warn("0x{x:08}: 0x{x:08}\n", cpu.regs[r1], cpu.bus.read_word(addr) catch unreachable);
     cpu.pc += 2;
 }
 
@@ -660,7 +680,8 @@ pub fn stw(cpu: *Cpu, halfword: u16) void {
 
     const addr = (cpu.regs[r1] +% sign_extend(disp)) & 0xfffffffe;
     cpu.bus.write_word(addr, cpu.regs[r2]) catch unreachable;
-    std.debug.warn("0x{x:08}: 0x{x:08}\n", cpu.regs[r1], cpu.bus.read_word(addr) catch unreachable);
+    std.debug.warn("write 0x{x:08} from r{} to 0x{x:08}\n", cpu.regs[r2], r2, addr);
+    std.debug.warn("0x{x:08}: 0x{x:08}\n", addr, cpu.bus.read_word(addr) catch unreachable);
     cpu.pc += 2;
 }
 
