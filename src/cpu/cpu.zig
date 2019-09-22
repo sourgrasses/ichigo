@@ -620,6 +620,7 @@ pub fn ldw(cpu: *Cpu, halfword: u16) void {
 
     const addr = (cpu.regs[r1] +% sign_extend(disp)) & 0xfffffffe;
     cpu.regs[r2] = cpu.bus.read_word(addr) catch unreachable;
+    std.debug.warn("0x{x:08}: 0x{x:08}\n", cpu.regs[r1], cpu.bus.read_word(addr) catch unreachable);
 
     cpu.pc += 2;
 }

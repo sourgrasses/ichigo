@@ -266,28 +266,25 @@ pub fn movhi(cpu: *Cpu, halfword: u16) void {
 }
 
 pub fn ldb(cpu: *Cpu, halfword: u16) void {
-    cpu.pc += 2;
     const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
     const r1 = @intCast(usize, halfword & 0x001f);
-    const disp = cpu.bus.read_halfword(cpu.pc) catch unreachable;
+    const disp = cpu.bus.read_halfword(cpu.pc + 2) catch unreachable;
 
     std.debug.warn("ld.b {}[r{}], r{}\n", disp, r1, r2);
 }
 
 pub fn ldh(cpu: *Cpu, halfword: u16) void {
-    cpu.pc += 2;
     const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
     const r1 = @intCast(usize, halfword & 0x001f);
-    const disp = cpu.bus.read_halfword(cpu.pc) catch unreachable;
+    const disp = cpu.bus.read_halfword(cpu.pc + 2) catch unreachable;
 
     std.debug.warn("ld.h {}[r{}], r{}\n", disp, r1, r2);
 }
 
 pub fn ldw(cpu: *Cpu, halfword: u16) void {
-    cpu.pc += 2;
     const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
     const r1 = @intCast(usize, halfword & 0x001f);
-    const disp = cpu.bus.read_halfword(cpu.pc) catch unreachable;
+    const disp = cpu.bus.read_halfword(cpu.pc + 2) catch unreachable;
 
     std.debug.warn("ld.w {}[r{}], r{}\n", disp, r1, r2);
 }
