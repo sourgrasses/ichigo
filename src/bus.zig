@@ -145,7 +145,9 @@ pub const Bus = struct {
             const mask = s.len - 1;
             const moffset = offset & mask;
 
-            mem.writeIntSliceLittle(u32, s[moffset..], val);
+            for (mem.asBytes(&val)) |byte, i| {
+                s[moffset + i] = byte;
+            }
         }
     }
 
@@ -158,7 +160,9 @@ pub const Bus = struct {
             const mask = s.len - 1;
             const moffset = offset & mask;
 
-            mem.writeIntLittle(u16, s[moffset..], val);
+            for (mem.asBytes(&val)) |byte, i| {
+                s[moffset + i] = byte;
+            }
         }
     }
 

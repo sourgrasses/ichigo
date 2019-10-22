@@ -230,19 +230,19 @@ pub fn addi(cpu: *Cpu, halfword: u16) void {
 }
 
 pub fn jr(cpu: *Cpu, halfword: u16) void {
-    const upper = @intCast(u32, halfword & 0x00ff) << 16;
+    const upper = @intCast(u32, halfword & 0x03ff) << 16;
     const lower = @intCast(u32, cpu.bus.read_halfword(cpu.pc + 2) catch unreachable);
     const disp = sign_extend26(@intCast(u26, (upper | lower)));
 
-    std.debug.warn("jr {}\n", @bitCast(i32, disp));
+    std.debug.warn("jr {} (0x{x:08})\n", @truncate(u26, disp), (cpu.pc +% disp & 0xfffffffe));
 }
 
 pub fn jal(cpu: *Cpu, halfword: u16) void {
-    const upper = @intCast(u32, halfword & 0x00ff) << 16;
+    const upper = @intCast(u32, halfword & 0x03ff) << 16;
     const lower = @intCast(u32, cpu.bus.read_halfword(cpu.pc + 2) catch unreachable);
     const disp = sign_extend26(@intCast(u26, (upper | lower)));
 
-    std.debug.warn("jal {}\n", @bitCast(i32, disp));
+    std.debug.warn("jal {} (0x{x:08})\n", @truncate(u26, disp), (cpu.pc +% disp & 0xfffffffe));
 }
 
 pub fn ori(cpu: *Cpu, halfword: u16) void {
@@ -250,7 +250,11 @@ pub fn ori(cpu: *Cpu, halfword: u16) void {
 }
 
 pub fn andi(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("andi TODO\n");
+    const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
+    const r1 = @intCast(usize, halfword & 0x001f);
+    const imm = cpu.bus.read_halfword(cpu.pc + 2) catch unreachable;
+
+    std.debug.warn("andi 0x{x}, r{}, r{}\n", imm, r1, r2);
 }
 
 pub fn xori(cpu: *Cpu, halfword: u16) void {

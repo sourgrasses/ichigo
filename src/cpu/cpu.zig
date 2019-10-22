@@ -35,14 +35,14 @@ pub const Cpu = struct {
 
             .regs = [32]Reg{
                 //               🌯🌯🌯🌯🌯🌯🌯🌯🌯
-                Reg(0),          Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe),
-                Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe),
-                Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe),
-                Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe),
-                Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe),
-                Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe),
-                Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe),
-                Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe), Reg(0xf00dbabe),
+                Reg(0),   Reg(0x0), Reg(0x0), Reg(0x0),
+                Reg(0x0), Reg(0x0), Reg(0x0), Reg(0x0),
+                Reg(0x0), Reg(0x0), Reg(0x0), Reg(0x0),
+                Reg(0x0), Reg(0x0), Reg(0x0), Reg(0x0),
+                Reg(0x0), Reg(0x0), Reg(0x0), Reg(0x0),
+                Reg(0x0), Reg(0x0), Reg(0x0), Reg(0x0),
+                Reg(0x0), Reg(0x0), Reg(0x0), Reg(0x0),
+                Reg(0x0), Reg(0x0), Reg(0x0), Reg(0x0),
             },
 
             .pc = Reg(0xfffffff0),
@@ -570,7 +570,7 @@ pub fn addi(cpu: *Cpu, halfword: u16) void {
 
 pub fn jr(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
-    const upper = @intCast(u32, halfword & 0x00ff) << 16;
+    const upper = @intCast(u32, halfword & 0x03ff) << 16;
     const lower = @intCast(u32, cpu.bus.read_halfword(cpu.pc) catch unreachable);
     const disp = sign_extend26(@intCast(u26, (upper | lower)));
 
@@ -578,7 +578,7 @@ pub fn jr(cpu: *Cpu, halfword: u16) void {
 }
 
 pub fn jal(cpu: *Cpu, halfword: u16) void {
-    const upper = @intCast(u32, halfword & 0x00ff) << 16;
+    const upper = @intCast(u32, halfword & 0x03ff) << 16;
     const lower = @intCast(u32, cpu.bus.read_halfword(cpu.pc + 2) catch unreachable);
     const disp = sign_extend26(@intCast(u26, (upper | lower)));
 
@@ -591,8 +591,14 @@ pub fn ori(cpu: *Cpu, halfword: u16) void {
     cpu.pc += 2;
 }
 
-// TODO
 pub fn andi(cpu: *Cpu, halfword: u16) void {
+    cpu.pc += 2;
+    const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
+    const r1 = @intCast(usize, halfword & 0x001f);
+    const imm = cpu.bus.read_halfword(cpu.pc) catch unreachable;
+
+    cpu.regs[r2] = cpu.regs[r1] & @intCast(u32, imm);
+
     cpu.pc += 2;
 }
 
@@ -643,7 +649,7 @@ pub fn ldw(cpu: *Cpu, halfword: u16) void {
 
     const addr = (cpu.regs[r1] +% sign_extend(disp)) & 0xfffffffe;
     cpu.regs[r2] = cpu.bus.read_word(addr) catch unreachable;
-    std.debug.warn("0x{x:08}: 0x{x:08}\n", cpu.regs[r1], cpu.bus.read_word(addr) catch unreachable);
+    //std.debug.warn("0x{x:08}: 0x{x:08}\n", cpu.regs[r1], cpu.bus.read_word(addr) catch unreachable);
 
     cpu.pc += 2;
 }
@@ -680,8 +686,6 @@ pub fn stw(cpu: *Cpu, halfword: u16) void {
 
     const addr = (cpu.regs[r1] +% sign_extend(disp)) & 0xfffffffe;
     cpu.bus.write_word(addr, cpu.regs[r2]) catch unreachable;
-    std.debug.warn("write 0x{x:08} from r{} to 0x{x:08}\n", cpu.regs[r2], r2, addr);
-    std.debug.warn("0x{x:08}: 0x{x:08}\n", addr, cpu.bus.read_word(addr) catch unreachable);
     cpu.pc += 2;
 }
 
