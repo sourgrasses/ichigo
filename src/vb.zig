@@ -44,6 +44,6 @@ pub const Vb = struct {
 
     pub fn run(self: *Vb) void {
         self.cpu.boot(&self.vip, &self.vsu, self.wram, &self.cart);
-        self.cpu.run();
+        self.cpu.run(self.allocator);
     }
 };

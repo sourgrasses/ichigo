@@ -3,7 +3,8 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const Bus = @import("../bus.zig").Bus;
 const Cart = @import("../cart.zig").Cart;
-const DEBUG_INST_TABLE = @import("ops.zig").DEBUG_INST_TABLE;
+const debug = @import("debug.zig");
+const DebugState = debug.DebugState;
 const INST_TABLE = @import("ops.zig").INST_TABLE;
 const Reg = @import("regs.zig").Reg;
 const Vip = @import("../hw/vip.zig").Vip;
@@ -64,17 +65,18 @@ pub const Cpu = struct {
         self.bus.init(vip, vsu, wram, cart);
     }
 
-    pub fn run(self: *Cpu) void {
+    pub fn run(self: *Cpu, allocator: *Allocator) void {
+        const debug_mode = true;
+        var debug_state = DebugState.new(allocator);
+
         while (true) {
             const halfword = self.bus.read_halfword(self.pc) catch unreachable;
             const opcode = (halfword & 0xfc00) >> 10;
 
-            const debug = true;
-
-            if (debug) {
-                std.debug.warn("0x{x:08}\t{x:04}\t", self.pc, halfword);
-                DEBUG_INST_TABLE[opcode](self, halfword);
+            if (debug_mode) {
+                debug.debug(self, halfword, &debug_state);
             }
+
             INST_TABLE[opcode](self, halfword);
         }
     }
@@ -176,28 +178,35 @@ pub const Cpu = struct {
         }
     }
 
-    fn dump_reg(self: Cpu, reg: usize) void {
+    fn show_reg(self: Cpu, reg: usize) void {
         std.debug.warn("r{}: {x:08}\n", reg, self.regs[reg]);
     }
 
-    fn dump_regs(self: Cpu) void {
-        std.debug.warn("pc: {x:08}\n", self.pc);
-        std.debug.warn("psw: {x:08}\n", self.psw);
-        std.debug.warn("eipc: {x:08}\n", self.eipc);
-        std.debug.warn("eipsw: {x:08}\n", self.eipsw);
-        std.debug.warn("fepc: {x:08}\n", self.fepc);
-        std.debug.warn("fepsw: {x:08}\n", self.fepsw);
-        std.debug.warn("ecr: {x:08}\n", self.ecr);
-        std.debug.warn("adtre: {x:08}\n", self.adtre);
-        std.debug.warn("chcw: {x:08}\n", self.chcw);
-        std.debug.warn("tkcw: {x:08}\n", self.tkcw);
-        std.debug.warn("pir: {x:08}\n", self.pir);
+    fn show_regs(self: Cpu) void {
+        std.debug.warn("pc:\t{x:08}\n", self.pc);
+        std.debug.warn("psw:\t{x:08}\n", self.psw);
+        std.debug.warn("eipc:\t{x:08}\n", self.eipc);
+        std.debug.warn("eipsw:\t{x:08}\n", self.eipsw);
+        std.debug.warn("fepc:\t{x:08}\n", self.fepc);
+        std.debug.warn("fepsw:\t{x:08}\n", self.fepsw);
+        std.debug.warn("ecr:\t{x:08}\n", self.ecr);
+        std.debug.warn("adtre:\t{x:08}\n", self.adtre);
+        std.debug.warn("chcw:\t{x:08}\n", self.chcw);
+        std.debug.warn("tkcw:\t{x:08}\n", self.tkcw);
+        std.debug.warn("pir:\t{x:08}\n", self.pir);
 
         var reg: usize = 0;
         while (reg < 32) {
-            std.debug.warn("r{}: {x:08}\n", reg, self.regs[reg]);
+            std.debug.warn("r{}:\t{x:08}\n", reg, self.regs[reg]);
             reg += 1;
         }
+    }
+
+    fn show_flags(self: *Cpu) void {
+        std.debug.warn("cy: {}\n", self.cy());
+        std.debug.warn("ov: {}\n", self.ov());
+        std.debug.warn("s: {}\n", self.s());
+        std.debug.warn("z: {}\n", self.z());
     }
 };
 
@@ -321,6 +330,13 @@ pub fn orop(cpu: *Cpu, halfword: u16) void {
 
 // TODO
 pub fn andop(cpu: *Cpu, halfword: u16) void {
+    const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
+    const r1 = @intCast(usize, halfword & 0x001f);
+
+    cpu.regs[r2] = cpu.regs[r2] & cpu.regs[r1];
+
+    cpu.clear_ov();
+
     cpu.pc += 2;
 }
 
@@ -353,45 +369,115 @@ pub fn add2(cpu: *Cpu, halfword: u16) void {
         cpu.regs[r2] = cpu.regs[r2] +% @intCast(u32, imm);
     }
 
-    if (cpu.regs[r2] < old) {
+    cpu.set_flags(cpu.regs[r2], old);
+
+    cpu.pc += 2;
+}
+
+pub fn cmp2(cpu: *Cpu, halfword: u16) void {
+    const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
+    const imm = @intCast(u32, halfword & 0x001f);
+
+    const res = cpu.regs[r2] -% imm;
+    cpu.set_flags(res, imm);
+
+    cpu.pc += 2;
+}
+
+pub fn shl2(cpu: *Cpu, halfword: u16) void {
+    const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
+    const imm = @intCast(u5, halfword & 0x001f);
+
+    const old = cpu.regs[r2];
+    cpu.regs[r2] = cpu.regs[r2] << imm;
+
+    if ((old >> imm - 1) & 0x1 == 0x1) {
         cpu.set_cy();
+    } else {
+        cpu.clear_cy();
     }
-    if ((cpu.regs[r2] & 0x10000000) != (old & 0x10000000)) {
-        cpu.set_ov();
-    }
+
+    cpu.clear_ov();
+
     if (@bitCast(i32, cpu.regs[r2]) < 0) {
         cpu.set_s();
+    } else {
+        cpu.clear_s();
     }
+
     if (cpu.regs[r2] == 0) {
         cpu.set_z();
+    } else {
+        cpu.clear_z();
     }
 
     cpu.pc += 2;
 }
 
-// TODO
-pub fn cmp2(cpu: *Cpu, halfword: u16) void {
-    cpu.pc += 2;
-}
-
-// TODO
-pub fn shl2(cpu: *Cpu, halfword: u16) void {
-    cpu.pc += 2;
-}
-
-// TODO
 pub fn shr2(cpu: *Cpu, halfword: u16) void {
+    const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
+    const imm = @intCast(u5, halfword & 0x001f);
+
+    const old = cpu.regs[r2];
+    cpu.regs[r2] = cpu.regs[r2] >> imm;
+
+    if ((old >> imm - 1) & 0x1 == 0x1) {
+        cpu.set_cy();
+    } else {
+        cpu.clear_cy();
+    }
+
+    cpu.clear_ov();
+
+    if (@bitCast(i32, cpu.regs[r2]) < 0) {
+        cpu.set_s();
+    } else {
+        cpu.clear_s();
+    }
+
+    if (cpu.regs[r2] == 0) {
+        cpu.set_z();
+    } else {
+        cpu.clear_z();
+    }
+
     cpu.pc += 2;
 }
 
-// TODO
 // Nintendo-specific
 pub fn cli(cpu: *Cpu, halfword: u16) void {
+    cpu.clear_interrupt_disable();
     cpu.pc += 2;
 }
 
-// TODO
 pub fn sar2(cpu: *Cpu, halfword: u16) void {
+    const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
+    const imm = @intCast(u5, halfword & 0x001f);
+
+    const old = cpu.regs[r2];
+    const res = @intCast(i32, cpu.regs[r2]) >> imm;
+    cpu.regs[r2] = @intCast(u32, res);
+
+    if ((old >> imm - 1) & 0x1 == 0x1) {
+        cpu.set_cy();
+    } else {
+        cpu.clear_cy();
+    }
+
+    cpu.clear_ov();
+
+    if (@bitCast(i32, cpu.regs[r2]) < 0) {
+        cpu.set_s();
+    } else {
+        cpu.clear_s();
+    }
+
+    if (cpu.regs[r2] == 0) {
+        cpu.set_z();
+    } else {
+        cpu.clear_z();
+    }
+
     cpu.pc += 2;
 }
 
@@ -586,8 +672,28 @@ pub fn jal(cpu: *Cpu, halfword: u16) void {
     cpu.pc = cpu.pc +% disp & 0xfffffffe;
 }
 
-// TODO
 pub fn ori(cpu: *Cpu, halfword: u16) void {
+    cpu.pc += 2;
+    const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
+    const r1 = @intCast(usize, halfword & 0x001f);
+    const imm = cpu.bus.read_halfword(cpu.pc) catch unreachable;
+
+    cpu.regs[r2] = cpu.regs[r1] | @intCast(u32, imm);
+
+    cpu.clear_ov();
+
+    if (@bitCast(i32, cpu.regs[r2]) < 0) {
+        cpu.set_s();
+    } else {
+        cpu.clear_s();
+    }
+
+    if (cpu.regs[r2] == 0) {
+        cpu.set_z();
+    } else {
+        cpu.clear_z();
+    }
+
     cpu.pc += 2;
 }
 
@@ -598,6 +704,15 @@ pub fn andi(cpu: *Cpu, halfword: u16) void {
     const imm = cpu.bus.read_halfword(cpu.pc) catch unreachable;
 
     cpu.regs[r2] = cpu.regs[r1] & @intCast(u32, imm);
+
+    cpu.clear_ov();
+    cpu.clear_s();
+
+    if (cpu.regs[r2] == 0) {
+        cpu.set_z();
+    } else {
+        cpu.clear_z();
+    }
 
     cpu.pc += 2;
 }
@@ -649,7 +764,6 @@ pub fn ldw(cpu: *Cpu, halfword: u16) void {
 
     const addr = (cpu.regs[r1] +% sign_extend(disp)) & 0xfffffffe;
     cpu.regs[r2] = cpu.bus.read_word(addr) catch unreachable;
-    //std.debug.warn("0x{x:08}: 0x{x:08}\n", cpu.regs[r1], cpu.bus.read_word(addr) catch unreachable);
 
     cpu.pc += 2;
 }

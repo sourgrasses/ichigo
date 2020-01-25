@@ -34,7 +34,7 @@ pub const MemRegion = struct {
 pub const Bus = struct {
     // let's do this as a list we have to traverse for every memory read for
     // now to get things working, but we'll almost definitely need to replace
-    // this with a more sped-efficient data structure once we're trying
+    // this with a more speed-efficient data structure once we're trying
     // to run things ~at speed~
     regions: ArrayList(MemRegion),
     com: hw.Com,
@@ -120,6 +120,11 @@ pub const Bus = struct {
             const s = try self.get_slice(offset);
             const mask = s.len - 1;
             const moffset = offset & mask;
+
+            if (offset < 0x01000000) {
+                std.debug.warn("vip/vram read at offset: 0x{x}\n", offset);
+            }
+
             return std.mem.readIntSliceLittle(u16, s[moffset .. moffset + 2]);
         }
     }
@@ -159,6 +164,10 @@ pub const Bus = struct {
             const s = try self.get_slice(offset);
             const mask = s.len - 1;
             const moffset = offset & mask;
+
+            if (offset < 0x01000000) {
+                std.debug.warn("vip/vram write 0x{x} at offset: 0x{x}\n", val, offset);
+            }
 
             for (mem.asBytes(&val)) |byte, i| {
                 s[moffset + i] = byte;

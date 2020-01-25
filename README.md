@@ -1,11 +1,15 @@
 # 🍓 ichigo
 Virtual Boy emulator in Zig.
 
+## Status
+Reaches a point in games where the game begins checking for the "display is ready" bit in the display status "register" of the VIP to be set, starting to implement display SDL stuff
+
 ## TODO
 ### basic functionality
 - [x] opcodes table
 - [ ] implement all opcodes
-- [ ] basic SDL
+- [x] basic SDL
+- [ ] render SDL each cycle
 - [ ] vip
 - [ ] vsu
 
