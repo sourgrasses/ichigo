@@ -2,7 +2,9 @@
 Virtual Boy emulator in Zig.
 
 ## Status
-Reaches a point in games where the game begins checking for the "display is ready" bit in the display status "register" of the VIP to be set, starting to implement display SDL stuff
+- reaches a point in games where the game begins checking for the "display is ready" bit in the display status "register" of the VIP to be set
+- starting to implement display SDL stuff
+- moving main loop out of `Cpu.run()`
 
 ## TODO
 ### basic functionality

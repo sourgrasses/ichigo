@@ -30,7 +30,8 @@ pub const Vb = struct {
         var wram = try allocator.alloc(u8, WRAM_SIZE);
         mem.set(u8, wram, 0);
 
-        var cpu = Cpu.new(allocator, &cart);
+        const debug_mode = true;
+        var cpu = Cpu.new(allocator, &cart, &vip, &vsu, debug_mode);
 
         return Vb{
             .allocator = allocator,
@@ -43,7 +44,9 @@ pub const Vb = struct {
     }
 
     pub fn run(self: *Vb) void {
-        self.cpu.boot(&self.vip, &self.vsu, self.wram, &self.cart);
-        self.cpu.run(self.allocator);
+        self.cpu.boot(self.wram, &self.cart);
+        while (true) {
+            self.cpu.cycle();
+        }
     }
 };

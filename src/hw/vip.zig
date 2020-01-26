@@ -11,12 +11,10 @@ const VRAM_SIZE = 64 * 1024;
 const Display = struct {
     renderer: ?*c.SDL_Renderer,
     win: ?*c.SDL_Window,
-    left_pixels: [224][384]u8,
-    right_pixels: [224][384]u8,
+    pixels: [224][384]u8,
 
     fn new() Display {
-        const left_pixels = [_][384]u8{[_]u8{0} ** 384} ** 224;
-        const right_pixels = [_][384]u8{[_]u8{0} ** 384} ** 224;
+        const pixels = [_][384]u8{[_]u8{0} ** 384} ** 224;
 
         if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
             std.debug.warn("Unable to initialize SDL video\n");
@@ -34,8 +32,7 @@ const Display = struct {
         return Display{
             .renderer = renderer,
             .win = win,
-            .left_pixels = left_pixels,
-            .right_pixels = right_pixels,
+            .pixels = pixels,
         };
     }
 
@@ -46,25 +43,6 @@ const Display = struct {
     }
 
     fn render(self: *Display) void {
-        for (self.pixels) |row, y| {
-            for (row) |column, x| {
-                if (column == 1) {
-                    _ = c.SDL_SetRenderDrawColor(self.renderer, 255, 191, 0, 255);
-                } else {
-                    _ = c.SDL_SetRenderDrawColor(self.renderer, 0, 0, 0, 255);
-                }
-
-                var rect = c.SDL_Rect{
-                    .x = @intCast(c_int, x),
-                    .y = @intCast(c_int, y),
-                    .w = 10,
-                    .h = 10,
-                };
-
-                _ = c.SDL_RenderFillRect(self.renderer, &rect);
-            }
-        }
-
         _ = c.SDL_RenderPresent(self.renderer);
     }
 };
@@ -81,6 +59,14 @@ pub const Vip = struct {
             .display = Display.new(),
             .vram = vram,
         };
+    }
+
+    pub fn clear(self: *Vip) void {
+        self.display.clear();
+    }
+
+    pub fn render(self: *Vip) void {
+        self.display.render();
     }
 
     fn interrupt_pending(self: *Vip) u16 {

@@ -28,8 +28,15 @@ pub const Cpu = struct {
     tkcw: Reg, // task control word
     pir: Reg, // Processor ID Register
 
-    pub fn new(allocator: *Allocator, cart: *Cart) Cpu {
-        var bus = Bus.new(allocator);
+    debug_state: ?DebugState,
+
+    pub fn new(allocator: *Allocator, cart: *Cart, vip: *Vip, vsu: *Vsu, debug_mode: bool) Cpu {
+        var bus = Bus.new(allocator, vip, vsu);
+
+        var debug_state: ?DebugState = null;
+        if (debug_mode) {
+            debug_state = DebugState.new(allocator);
+        }
 
         return Cpu{
             .bus = bus,
@@ -58,27 +65,25 @@ pub const Cpu = struct {
             .chcw = Reg(0),
             .tkcw = Reg(0),
             .pir = Reg(0),
+
+            .debug_state = debug_state,
         };
     }
 
-    pub fn boot(self: *Cpu, vip: *Vip, vsu: *Vsu, wram: []u8, cart: *Cart) void {
-        self.bus.init(vip, vsu, wram, cart);
+    pub fn boot(self: *Cpu, wram: []u8, cart: *Cart) void {
+        self.bus.init(wram, cart);
     }
 
-    pub fn run(self: *Cpu, allocator: *Allocator) void {
-        const debug_mode = true;
-        var debug_state = DebugState.new(allocator);
+    pub fn cycle(self: *Cpu) void {
+        const halfword = self.bus.read_halfword(self.pc) catch unreachable;
+        const opcode = (halfword & 0xfc00) >> 10;
 
-        while (true) {
-            const halfword = self.bus.read_halfword(self.pc) catch unreachable;
-            const opcode = (halfword & 0xfc00) >> 10;
-
-            if (debug_mode) {
-                debug.debug(self, halfword, &debug_state);
-            }
-
-            INST_TABLE[opcode](self, halfword);
+        if (self.debug_state) |*debug_state| {
+            debug.debug(self, halfword, debug_state);
         }
+
+        // call function from function pointer table
+        INST_TABLE[opcode](self, halfword);
     }
 
     fn get_sysreg_ptr(self: *Cpu, imm: u5) *Reg {
