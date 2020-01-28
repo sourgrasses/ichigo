@@ -31,7 +31,7 @@ pub const Vb = struct {
         mem.set(u8, wram, 0);
 
         const debug_mode = true;
-        var cpu = Cpu.new(allocator, &cart, &vip, &vsu, debug_mode);
+        var cpu = Cpu.new(allocator, &cart, debug_mode);
 
         return Vb{
             .allocator = allocator,
@@ -44,7 +44,7 @@ pub const Vb = struct {
     }
 
     pub fn run(self: *Vb) void {
-        self.cpu.boot(self.wram, &self.cart);
+        self.cpu.boot(self.wram[0..], &self.cart, &self.vip, &self.vsu);
         while (true) {
             self.cpu.cycle();
         }

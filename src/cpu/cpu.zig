@@ -30,8 +30,8 @@ pub const Cpu = struct {
 
     debug_state: ?DebugState,
 
-    pub fn new(allocator: *Allocator, cart: *Cart, vip: *Vip, vsu: *Vsu, debug_mode: bool) Cpu {
-        var bus = Bus.new(allocator, vip, vsu);
+    pub fn new(allocator: *Allocator, cart: *Cart, debug_mode: bool) Cpu {
+        var bus = Bus.new(allocator);
 
         var debug_state: ?DebugState = null;
         if (debug_mode) {
@@ -70,8 +70,8 @@ pub const Cpu = struct {
         };
     }
 
-    pub fn boot(self: *Cpu, wram: []u8, cart: *Cart) void {
-        self.bus.init(wram, cart);
+    pub fn boot(self: *Cpu, wram: []u8, cart: *Cart, vip: *Vip, vsu: *Vsu) void {
+        self.bus.init(wram, cart, vip, vsu);
     }
 
     pub fn cycle(self: *Cpu) void {

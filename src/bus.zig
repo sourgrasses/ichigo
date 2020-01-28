@@ -41,10 +41,7 @@ pub const Bus = struct {
     game_pad: hw.GamePad,
     timer: hw.Timer,
 
-    vip: *Vip,
-    vsu: *Vsu,
-
-    pub fn new(allocator: *Allocator, vip: *Vip, vsu: *Vsu) Bus {
+    pub fn new(allocator: *Allocator) Bus {
         var regions = ArrayList(MemRegion).init(allocator);
         defer regions.deinit();
 
@@ -53,18 +50,15 @@ pub const Bus = struct {
             .com = hw.Com.new(),
             .game_pad = hw.GamePad.new(),
             .timer = hw.Timer.new(),
-
-            .vip = vip,
-            .vsu = vsu,
         };
     }
 
-    pub fn init(self: *Bus, wram: []u8, cart: *Cart) void {
+    pub fn init(self: *Bus, wram: []u8, cart: *Cart, vip: *Vip, vsu: *Vsu) void {
         // a lot of this isn't *quite* correct atm, because we're not routing to
         // registers and dealing with io shit, but let's get things up and
         // running before fiddling with all that
-        self.map_region(0x00000000, 0x00ffffff, self.vip.*.vram) catch unreachable;
-        self.map_region(0x01000000, 0x01ffffff, self.vsu.*.dummy_ram) catch unreachable;
+        self.map_region(0x00000000, 0x00ffffff, vip.vram) catch unreachable;
+        self.map_region(0x01000000, 0x01ffffff, vsu.dummy_ram) catch unreachable;
         self.map_region(0x04000000, 0x05ffffff, cart.exp_ram) catch unreachable;
         self.map_region(0x05000000, 0x05ffffff, wram) catch unreachable;
         self.map_region(0x06000000, 0x06ffffff, cart.sram) catch unreachable;

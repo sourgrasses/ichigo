@@ -4,51 +4,11 @@ const mem = std.mem;
 const Allocator = std.mem.Allocator;
 const MemError = @import("../mem.zig").MemError;
 
-const c = @cImport(@cInclude("SDL2/SDL.h"));
+//const c = @cImport(@cInclude("SDL2/SDL.h"));
 
 const VRAM_SIZE = 64 * 1024;
 
-const Display = struct {
-    renderer: ?*c.SDL_Renderer,
-    win: ?*c.SDL_Window,
-    pixels: [224][384]u8,
-
-    fn new() Display {
-        const pixels = [_][384]u8{[_]u8{0} ** 384} ** 224;
-
-        if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
-            std.debug.warn("Unable to initialize SDL video\n");
-            std.process.exit(1);
-        }
-        defer c.SDL_Quit();
-
-        const win = c.SDL_CreateWindow(c"ichigo", 100, 100, 384, 224, c.SDL_WINDOW_SHOWN);
-        const renderer = c.SDL_CreateRenderer(win, -1, c.SDL_RENDERER_ACCELERATED | c.SDL_RENDERER_PRESENTVSYNC);
-
-        _ = c.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        _ = c.SDL_RenderFillRect(renderer, null);
-        _ = c.SDL_RenderPresent(renderer);
-
-        return Display{
-            .renderer = renderer,
-            .win = win,
-            .pixels = pixels,
-        };
-    }
-
-    fn clear(self: *Display) void {
-        _ = c.SDL_SetRenderDrawColor(self.renderer, 0, 0, 0, 255);
-        _ = c.SDL_RenderFillRect(self.renderer, null);
-        _ = c.SDL_RenderPresent(self.renderer);
-    }
-
-    fn render(self: *Display) void {
-        _ = c.SDL_RenderPresent(self.renderer);
-    }
-};
-
 pub const Vip = struct {
-    display: Display,
     vram: []u8,
 
     pub fn new(allocator: *Allocator) !Vip {
@@ -56,7 +16,6 @@ pub const Vip = struct {
         mem.set(u8, vram, 0);
 
         return Vip{
-            .display = Display.new(),
             .vram = vram,
         };
     }
