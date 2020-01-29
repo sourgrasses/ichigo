@@ -11,11 +11,13 @@ const Reg = @import("regs.zig").Reg;
 pub const DebugState = struct {
     allocator: *Allocator,
     breakpoint: ?Reg,
+    quit: bool,
 
     pub fn new(allocator: *Allocator) DebugState {
         return DebugState{
             .allocator = allocator,
             .breakpoint = null,
+            .quit = false,
         };
     }
 };
@@ -29,7 +31,7 @@ pub fn debug(cpu: *Cpu, halfword: u16, debug_state: *DebugState) void {
             debug_prompt(cpu, halfword, debug_state);
         }
     }
-    //show_instruction(cpu, halfword);
+    show_instruction(cpu, halfword);
 }
 
 fn debug_prompt(cpu: *Cpu, halfword: u16, debug_state: *DebugState) void {
@@ -41,7 +43,7 @@ fn debug_prompt(cpu: *Cpu, halfword: u16, debug_state: *DebugState) void {
 
     if (cmd.len != 0) {
         if (cmd[0] == 0x71) { // q
-            std.process.exit(0);
+            debug_state.quit = true;
         } else if (cmd[0] == 0x62) { // b
             if (cmd.len > 2 and ascii.isSpace(cmd[1])) {
                 debug_state.breakpoint = 0xfffc0250;
@@ -59,6 +61,9 @@ fn debug_prompt(cpu: *Cpu, halfword: u16, debug_state: *DebugState) void {
         } else if (cmd[0] == 0x72) { // r
             cpu.show_regs();
             debug_prompt(cpu, halfword, debug_state);
+        } else if (cmd[0] == 0x73) { // s
+            std.debug.warn("display control: {x}\n", cpu.bus.read_halfword(0x0005f822));
+            std.debug.warn("display status: {x}\n", cpu.bus.read_halfword(0x0005f820));
         } else {
             std.debug.warn("Unrecognized command '{}'\n", cmd[0]);
             debug_prompt(cpu, halfword, debug_state);

@@ -9,6 +9,8 @@ const Cpu = @import("cpu/cpu.zig").Cpu;
 const Vip = @import("hw/vip.zig").Vip;
 const Vsu = @import("hw/vsu.zig").Vsu;
 
+const sdl = @cImport(@cInclude("SDL2/SDL.h"));
+
 const WRAM_SIZE = comptime 64 * 1024;
 
 pub const Vb = struct {
@@ -45,8 +47,40 @@ pub const Vb = struct {
 
     pub fn run(self: *Vb) void {
         self.cpu.boot(self.wram[0..], &self.cart, &self.vip, &self.vsu);
+
+        var window: ?*sdl.SDL_Window = null;
+        var surface: ?*sdl.SDL_Surface = null;
+        const disp_width = 384;
+        const disp_height = 224;
+
+        if (sdl.SDL_Init(sdl.SDL_INIT_VIDEO) != 0) {
+            std.debug.warn("Error initializing SDL: {}", sdl.SDL_GetError());
+            std.process.exit(1);
+        } else {
+            window = sdl.SDL_CreateWindow(c"ichigo", 200, 200, disp_width, disp_height, sdl.SDL_WINDOW_SHOWN);
+
+            if (window == null) {
+                std.debug.warn("Error creating SDL window: {}", sdl.SDL_GetError());
+                std.process.exit(1);
+            } else {
+                surface = sdl.SDL_GetWindowSurface(window);
+            }
+        }
+
         while (true) {
+            // if we're using the debugger, check to see if we should quit and then clean up
+            if (self.cpu.debug_state) |debug_state| {
+                if (debug_state.quit) {
+                    sdl.SDL_DestroyWindow(window);
+                    sdl.SDL_Quit();
+                    std.process.exit(0);
+                }
+            }
+
             self.cpu.cycle();
+            self.vip.cycle();
+            //_ = sdl.SDL_FillRect(surface.?, null, sdl.SDL_MapRGB(surface.?.format, 0, 0, 0));
+            //_ = sdl.SDL_UpdateWindowSurface(window);
         }
     }
 };

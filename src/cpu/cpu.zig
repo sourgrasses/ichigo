@@ -660,9 +660,8 @@ pub fn addi(cpu: *Cpu, halfword: u16) void {
 }
 
 pub fn jr(cpu: *Cpu, halfword: u16) void {
-    cpu.pc += 2;
     const upper = @intCast(u32, halfword & 0x03ff) << 16;
-    const lower = @intCast(u32, cpu.bus.read_halfword(cpu.pc) catch unreachable);
+    const lower = @intCast(u32, cpu.bus.read_halfword(cpu.pc + 2) catch unreachable);
     const disp = sign_extend26(@intCast(u26, (upper | lower)));
 
     cpu.pc = cpu.pc +% disp & 0xfffffffe;
@@ -708,7 +707,8 @@ pub fn andi(cpu: *Cpu, halfword: u16) void {
     const r1 = @intCast(usize, halfword & 0x001f);
     const imm = cpu.bus.read_halfword(cpu.pc) catch unreachable;
 
-    cpu.regs[r2] = cpu.regs[r1] & @intCast(u32, imm);
+    const res = cpu.regs[r1] & @intCast(u32, imm);
+    cpu.regs[r2] = res;
 
     cpu.clear_ov();
     cpu.clear_s();

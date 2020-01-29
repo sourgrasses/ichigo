@@ -59,7 +59,7 @@ pub const Bus = struct {
         // running before fiddling with all that
         self.map_region(0x00000000, 0x00ffffff, vip.vram) catch unreachable;
         self.map_region(0x01000000, 0x01ffffff, vsu.dummy_ram) catch unreachable;
-        self.map_region(0x04000000, 0x05ffffff, cart.exp_ram) catch unreachable;
+        self.map_region(0x04000000, 0x04ffffff, cart.exp_ram) catch unreachable;
         self.map_region(0x05000000, 0x05ffffff, wram) catch unreachable;
         self.map_region(0x06000000, 0x06ffffff, cart.sram) catch unreachable;
         self.map_region(0x07000000, 0x07ffffff, cart.rom) catch unreachable;
@@ -108,7 +108,10 @@ pub const Bus = struct {
             // use a mask to get the relative offset within the memory region
             const mask = s.len - 1;
             const moffset = offset & mask;
-            return std.mem.readIntSliceLittle(u32, s[moffset .. moffset + 4]);
+
+            const val = std.mem.readIntSliceLittle(u32, s[moffset .. moffset + 4]);
+
+            return val;
         }
     }
 
@@ -122,7 +125,7 @@ pub const Bus = struct {
             const moffset = offset & mask;
 
             if (offset < 0x01000000) {
-                std.debug.warn("vip/vram read at offset: 0x{x}\n", offset);
+                std.debug.warn("vip/vram read at offset: 0x{x}\n", moffset);
             }
 
             return std.mem.readIntSliceLittle(u16, s[moffset .. moffset + 2]);
@@ -166,7 +169,7 @@ pub const Bus = struct {
             const moffset = offset & mask;
 
             if (offset < 0x01000000) {
-                std.debug.warn("vip/vram write 0x{x} at offset: 0x{x}\n", val, offset);
+                std.debug.warn("vip/vram write 0x{x} at offset: 0x{x}\n", val, moffset);
             }
 
             for (mem.asBytes(&val)) |byte, i| {

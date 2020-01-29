@@ -4,11 +4,10 @@ const mem = std.mem;
 const Allocator = std.mem.Allocator;
 const MemError = @import("../mem.zig").MemError;
 
-//const c = @cImport(@cInclude("SDL2/SDL.h"));
-
 const VRAM_SIZE = 64 * 1024;
 
 pub const Vip = struct {
+    disp_pixels: [224][384]u8,
     vram: []u8,
 
     pub fn new(allocator: *Allocator) !Vip {
@@ -16,123 +15,145 @@ pub const Vip = struct {
         mem.set(u8, vram, 0);
 
         return Vip{
+            .disp_pixels = [_][384]u8{[_]u8{0} ** 384} ** 224,
             .vram = vram,
         };
     }
 
-    pub fn clear(self: *Vip) void {
-        self.display.clear();
+    pub fn cycle(self: *Vip) void {
+        // set display procedure beginning
+        self.vram[0xf820] |= 0x40;
+
+        const disp_ctrl = self.display_control();
+        if ((disp_ctrl & 0x0200) == 0x0200) {
+            self.vram[0xf820] |= 0x02;
+        }
+
+        return;
     }
 
-    pub fn render(self: *Vip) void {
-        self.display.render();
+    fn update_display_status(self: *Vip) void {
+        const halfword = self.display_control();
+        if ((halfword & 0x0200) == 0x0200) {
+            self.vram[0xf820] |= 0x02;
+        }
+    }
+
+    fn frame_buffer_to_pixels(self: *Vip) void {
+        for (self.vram[0x00000000..0x00005fff]) |pixel, i| {}
     }
 
     fn interrupt_pending(self: *Vip) u16 {
-        return self.vram[0x0005f800];
+        return self.vram[0xf800];
     }
 
     fn interrupt_enable(self: *Vip) u16 {
-        return self.vram[0x0005f802];
+        return self.vram[0xf802];
     }
 
     fn interrupt_clear(self: *Vip) u16 {
-        return self.vram[0x0005f804];
+        return self.vram[0xf804];
     }
 
     fn display_status(self: *Vip) u16 {
-        return self.vram[0x0005f820];
+        const b = self.vram[0xf820];
+        const a = self.vram[0xf821];
+
+        return (@intCast(u16, a) << 8) | b;
     }
 
     fn display_control(self: *Vip) u16 {
-        return self.vram[0x0005f822];
+        const b = self.vram[0xf822];
+        const a = self.vram[0xf823];
+
+        return (@intCast(u16, a) << 8) | b;
     }
 
     fn led_brightness1(self: *Vip) u16 {
-        return self.vram[0x0005f824];
+        return self.vram[0xf824];
     }
 
     fn led_brightness2(self: *Vip) u16 {
-        return self.vram[0x0005f826];
+        return self.vram[0xf826];
     }
 
     fn led_brightness3(self: *Vip) u16 {
-        return self.vram[0x0005f828];
+        return self.vram[0xf828];
     }
 
     fn led_brightness_idle(self: *Vip) u16 {
-        return self.vram[0x0005f82a];
+        return self.vram[0xf82a];
     }
 
     fn frame_repeat(self: *Vip) u16 {
-        return self.vram[0x0005f82e];
+        return self.vram[0xf82e];
     }
 
     fn column_table_address(self: *Vip) u16 {
-        return self.vram[0x0005f830];
+        return self.vram[0xf830];
     }
 
     fn drawing_status(self: *Vip) u16 {
-        return self.vram[0x0005f840];
+        return self.vram[0xf840];
     }
 
     fn drawing_control(self: *Vip) u16 {
-        return self.vram[0x0005f842];
+        return self.vram[0xf842];
     }
 
     fn version(self: *Vip) u16 {
-        return self.vram[0x0005f844];
+        return self.vram[0xf844];
     }
 
     fn obj_group0_pointer(self: *Vip) u16 {
-        return self.vram[0x0005f848];
+        return self.vram[0xf848];
     }
 
     fn obj_group1_pointer(self: *Vip) u16 {
-        return self.vram[0x0005f84a];
+        return self.vram[0xf84a];
     }
 
     fn obj_group2_pointer(self: *Vip) u16 {
-        return self.vram[0x0005f84c];
+        return self.vram[0xf84c];
     }
 
     fn obj_group3_pointer(self: *Vip) u16 {
-        return self.vram[0x0005f84e];
+        return self.vram[0xf84e];
     }
 
     fn bg_palette0(self: *Vip) u16 {
-        return self.vram[0x0005f860];
+        return self.vram[0xf860];
     }
 
     fn bg_palette1(self: *Vip) u16 {
-        return self.vram[0x0005f862];
+        return self.vram[0xf862];
     }
 
     fn bg_palette2(self: *Vip) u16 {
-        return self.vram[0x0005f864];
+        return self.vram[0xf864];
     }
 
     fn bg_palette3(self: *Vip) u16 {
-        return self.vram[0x0005f866];
+        return self.vram[0xf866];
     }
 
     fn obj_palette0(self: *Vip) u16 {
-        return self.vram[0x0005f868];
+        return self.vram[0xf868];
     }
 
     fn obj_palette1(self: *Vip) u16 {
-        return self.vram[0x0005f86a];
+        return self.vram[0xf86a];
     }
 
     fn obj_palette2(self: *Vip) u16 {
-        return self.vram[0x0005f86c];
+        return self.vram[0xf86c];
     }
 
     fn obj_palette3(self: *Vip) u16 {
-        return self.vram[0x0005f86e];
+        return self.vram[0xf86e];
     }
 
     fn clear_color(self: *Vip) u16 {
-        return self.vram[0x0005f870];
+        return self.vram[0xf870];
     }
 };
