@@ -1,6 +1,8 @@
 const std = @import("std");
 const mem = std.mem;
 
+const sdl = @import("../main.zig").sdl;
+
 const Allocator = std.mem.Allocator;
 const MemError = @import("../mem.zig").MemError;
 
@@ -20,13 +22,32 @@ pub const Vip = struct {
         };
     }
 
-    pub fn cycle(self: *Vip) void {
-        // set display procedure beginning
-        self.vram[0xf820] |= 0x40;
+    pub fn display_vram(self: *Vip, surface: *sdl.SDL_Surface) void {
+        _ = sdl.SDL_FillRect(surface, null, sdl.SDL_MapRGB(surface.format, 0, 0, 0));
 
+        for (self.vram[0x8000..0xdfff]) |byte, i| {
+            if (byte != 0x00) {
+                const j = @intCast(c_int, i - 23552);
+                const x = j & 0x00ff;
+                const y = (j & 0xff00) >> 2;
+
+                const pixel = sdl.SDL_Rect{
+                    .x = x,
+                    .y = y,
+                    .w = 2,
+                    .h = 2,
+                };
+                _ = sdl.SDL_FillRect(surface, &pixel, sdl.SDL_MapRGB(surface.format, byte, 0, 0));
+            }
+        }
+    }
+
+    pub fn cycle(self: *Vip) void {
         const disp_ctrl = self.display_control();
         if ((disp_ctrl & 0x0200) == 0x0200) {
             self.vram[0xf820] |= 0x02;
+            // set display procedure beginning
+            self.vram[0xf820] |= 0x40;
         }
 
         return;

@@ -31,7 +31,7 @@ pub fn debug(cpu: *Cpu, halfword: u16, debug_state: *DebugState) void {
             debug_prompt(cpu, halfword, debug_state);
         }
     }
-    show_instruction(cpu, halfword);
+    //show_instruction(cpu, halfword);
 }
 
 fn debug_prompt(cpu: *Cpu, halfword: u16, debug_state: *DebugState) void {

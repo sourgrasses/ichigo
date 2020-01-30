@@ -1,5 +1,7 @@
 const std = @import("std");
 
+pub const sdl = @cImport(@cInclude("SDL2/SDL.h"));
+
 const Allocator = std.mem.Allocator;
 const Vb = @import("vb.zig").Vb;
 
