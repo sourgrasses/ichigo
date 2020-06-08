@@ -73,7 +73,7 @@ pub const Bus = struct {
     fn get_slice(self: *Bus, offset: usize) ![]u8 {
         const moffset = offset & MIRROR_MASK;
 
-        for (self.regions.toSlice()) |region| {
+        for (self.regions.items) |region| {
             if (moffset >= region.lower_bound and moffset < region.upper_bound) {
                 return region.slice;
             }
@@ -99,7 +99,7 @@ pub const Bus = struct {
         };
     }
 
-    fn read_word(self: *Bus, offset: usize) !u32 {
+    pub fn read_word(self: *Bus, offset: usize) !u32 {
         if (offset >= 0x02000000 and offset <= 0x02ffffff) {
             const res = try self.get_hw_ctrl_reg(offset);
             return res.*;
@@ -115,7 +115,7 @@ pub const Bus = struct {
         }
     }
 
-    fn read_halfword(self: *Bus, offset: usize) !u16 {
+    pub fn read_halfword(self: *Bus, offset: usize) !u16 {
         if (offset >= 0x02000000 and offset <= 0x02ffffff) {
             const reg = try self.get_hw_ctrl_reg(offset);
             return @intCast(u16, reg.* & 0x00ff);
@@ -125,14 +125,14 @@ pub const Bus = struct {
             const moffset = offset & mask;
 
             if (offset < 0x01000000) {
-                std.debug.warn("vip/vram read at offset: 0x{x}\n", moffset);
+                std.debug.warn("vip/vram read at offset: 0x{x}\n", .{moffset});
             }
 
             return std.mem.readIntSliceLittle(u16, s[moffset .. moffset + 2]);
         }
     }
 
-    fn read_byte(self: *Bus, offset: usize) !u8 {
+    pub fn read_byte(self: *Bus, offset: usize) !u8 {
         if (offset >= 0x02000000 and offset <= 0x02ffffff) {
             const reg = try self.get_hw_ctrl_reg(offset);
             return @intCast(u8, reg.* & 0x000f);
@@ -144,7 +144,7 @@ pub const Bus = struct {
         }
     }
 
-    fn write_word(self: *Bus, offset: usize, val: u32) !void {
+    pub fn write_word(self: *Bus, offset: usize, val: u32) !void {
         if (offset >= 0x02000000 and offset <= 0x02ffffff) {
             const reg = try self.get_hw_ctrl_reg(offset);
             reg.* = val;
@@ -159,7 +159,7 @@ pub const Bus = struct {
         }
     }
 
-    fn write_halfword(self: *Bus, offset: usize, val: u16) !void {
+    pub fn write_halfword(self: *Bus, offset: usize, val: u16) !void {
         if (offset >= 0x02000000 and offset <= 0x02ffffff) {
             const reg = try self.get_hw_ctrl_reg(offset);
             reg.* = @intCast(u32, val);
@@ -169,7 +169,7 @@ pub const Bus = struct {
             const moffset = offset & mask;
 
             if (offset < 0x01000000) {
-                std.debug.warn("vip/vram write 0x{x} at offset: 0x{x}\n", val, moffset);
+                std.debug.warn("vip/vram write 0x{x} at offset: 0x{x}\n", .{ val, moffset });
             }
 
             for (mem.asBytes(&val)) |byte, i| {
@@ -178,7 +178,7 @@ pub const Bus = struct {
         }
     }
 
-    fn write_byte(self: *Bus, offset: usize, val: u8) !void {
+    pub fn write_byte(self: *Bus, offset: usize, val: u8) !void {
         if (offset >= 0x02000000 and offset <= 0x02ffffff) {
             const reg = try self.get_hw_ctrl_reg(offset);
             reg.* = @intCast(u32, val);

@@ -1,87 +1,13 @@
 const std = @import("std");
-const ascii = std.ascii;
 
 const sign_extend26 = @import("cpu.zig").sign_extend26;
 
 const Allocator = std.mem.Allocator;
 const Cpu = @import("cpu.zig").Cpu;
-const DEBUG_INST_TABLE = @import("ops.zig").DEBUG_INST_TABLE;
 const Reg = @import("regs.zig").Reg;
 
-pub const DebugState = struct {
-    allocator: *Allocator,
-    breakpoint: ?Reg,
-    quit: bool,
-
-    pub fn new(allocator: *Allocator) DebugState {
-        return DebugState{
-            .allocator = allocator,
-            .breakpoint = null,
-            .quit = false,
-        };
-    }
-};
-
-pub fn debug(cpu: *Cpu, halfword: u16, debug_state: *DebugState) void {
-    if (cpu.pc == Reg(0xfffffff0)) {
-        std.debug.warn("ichigo debugger\n");
-        debug_prompt(cpu, halfword, debug_state);
-    } else if (debug_state.breakpoint) |breakpoint| {
-        if (cpu.pc == breakpoint) {
-            debug_prompt(cpu, halfword, debug_state);
-        }
-    }
-    show_instruction(cpu, halfword);
-}
-
-fn debug_prompt(cpu: *Cpu, halfword: u16, debug_state: *DebugState) void {
-    const prompt = "(idb 0x{x:08}) ";
-    std.debug.warn(prompt, cpu.pc);
-
-    var buf = std.Buffer.initSize(debug_state.allocator, 128) catch unreachable;
-    const cmd = std.io.readLine(&buf) catch unreachable;
-
-    if (cmd.len != 0) {
-        if (cmd[0] == 0x71) { // q
-            debug_state.quit = true;
-        } else if (cmd[0] == 0x62) { // b
-            if (cmd.len > 2 and ascii.isSpace(cmd[1])) {
-                debug_state.breakpoint = 0xfffc0250;
-            }
-        } else if (cmd[0] == 0x63) { // c
-            return;
-        } else if (cmd[0] == 0x64) { // d
-            show_instruction(cpu, halfword);
-            debug_prompt(cpu, halfword, debug_state);
-        } else if (cmd[0] == 0x66) { // f
-            cpu.show_flags();
-            debug_prompt(cpu, halfword, debug_state);
-        } else if (cmd[0] == 0x67) { // g
-            debug_prompt(cpu, halfword, debug_state);
-        } else if (cmd[0] == 0x72) { // r
-            cpu.show_regs();
-            debug_prompt(cpu, halfword, debug_state);
-        } else if (cmd[0] == 0x73) { // s
-            std.debug.warn("display control: {x}\n", cpu.bus.read_halfword(0x0005f822));
-            std.debug.warn("display status: {x}\n", cpu.bus.read_halfword(0x0005f820));
-        } else {
-            std.debug.warn("Unrecognized command '{}'\n", cmd[0]);
-            debug_prompt(cpu, halfword, debug_state);
-        }
-    } else {
-        std.debug.warn("No command entered...\n");
-        debug_prompt(cpu, halfword, debug_state);
-    }
-}
-
-fn show_instruction(cpu: *Cpu, halfword: u16) void {
-    const opcode = (halfword & 0xfc00) >> 10;
-    std.debug.warn("0x{x:08}\t{x:04}\t", cpu.pc, halfword);
-    DEBUG_INST_TABLE[opcode](cpu, halfword);
-}
-
 pub fn illegal(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("Illegal opcode: 0x{x}\n", halfword);
+    std.debug.warn("Illegal opcode: 0x{x}\n", .{halfword});
 }
 
 // move register
@@ -89,7 +15,7 @@ pub fn mov(cpu: *Cpu, halfword: u16) void {
     const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
     const r1 = @intCast(usize, halfword & 0x001f);
 
-    std.debug.warn("mov r{}, r{}\n", r1, r2);
+    std.debug.warn("mov r{}, r{}\n", .{ r1, r2 });
 }
 
 // add register
@@ -97,154 +23,154 @@ pub fn add(cpu: *Cpu, halfword: u16) void {
     const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
     const r1 = @intCast(usize, halfword & 0x001f);
 
-    std.debug.warn("add r{}, r{}\n", r2, r1);
+    std.debug.warn("add r{}, r{}\n", .{ r2, r1 });
 }
 
 // subtract
 pub fn sub(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("sub TODO\n");
+    std.debug.warn("sub TODO\n", .{});
 }
 
 pub fn cmp(cpu: *Cpu, halfword: u16) void {
     const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
     const r1 = @intCast(usize, halfword & 0x001f);
 
-    std.debug.warn("cmp r{}, r{}\n", r2, r1);
+    std.debug.warn("cmp r{}, r{}\n", .{ r2, r1 });
 }
 
 pub fn shl(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("sl TODO\n");
+    std.debug.warn("sl TODO\n", .{});
 }
 
 pub fn shr(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("shr TODO\n");
+    std.debug.warn("shr TODO\n", .{});
 }
 
 pub fn jmp(cpu: *Cpu, halfword: u16) void {
     const r1 = @intCast(usize, halfword & 0x001f);
-    std.debug.warn("jmp [r{}]\n", r1);
+    std.debug.warn("jmp [r{}]\n", .{r1});
 }
 
 pub fn sar(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("sar TODO\n");
+    std.debug.warn("sar TODO\n", .{});
 }
 
 pub fn mul(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("mul TODO\n");
+    std.debug.warn("mul TODO\n", .{});
 }
 
 pub fn div(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("div TODO\n");
+    std.debug.warn("div TODO\n", .{});
 }
 
 pub fn mulu(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("mulu TODO\n");
+    std.debug.warn("mulu TODO\n", .{});
 }
 
 pub fn divu(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("divu TODO\n");
+    std.debug.warn("divu TODO\n", .{});
 }
 
 pub fn orop(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("or TODO\n");
+    std.debug.warn("or TODO\n", .{});
 }
 
 pub fn andop(cpu: *Cpu, halfword: u16) void {
     const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
     const r1 = @intCast(usize, halfword & 0x001f);
 
-    std.debug.warn("and r{}, r{}\n", r1, r2);
+    std.debug.warn("and r{}, r{}\n", .{ r1, r2 });
 }
 
 pub fn xor(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("xor TODO\n");
+    std.debug.warn("xor TODO\n", .{});
 }
 
 pub fn not(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("not TODO\n");
+    std.debug.warn("not TODO\n", .{});
 }
 
 pub fn mov2(cpu: *Cpu, halfword: u16) void {
     const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
     const imm = @bitCast(i5, @intCast(u5, halfword & 0x001f));
 
-    std.debug.warn("mov {}, r{}\n", imm, r2);
+    std.debug.warn("mov {}, r{}\n", .{ imm, r2 });
 }
 
 pub fn add2(cpu: *Cpu, halfword: u16) void {
     const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
     const imm = @bitCast(i5, @intCast(u5, halfword & 0x001f));
 
-    std.debug.warn("add {}, r{}\n", imm, r2);
+    std.debug.warn("add {}, r{}\n", .{ imm, r2 });
 }
 
 pub fn cmp2(cpu: *Cpu, halfword: u16) void {
     const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
     const imm = @intCast(usize, halfword & 0x001f);
 
-    std.debug.warn("cmp {}, r{}\n", imm, r2);
+    std.debug.warn("cmp {}, r{}\n", .{ imm, r2 });
 }
 
 pub fn shl2(cpu: *Cpu, halfword: u16) void {
     const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
     const imm = @intCast(u32, halfword & 0x001f);
 
-    std.debug.warn("shl {}, r{}\n", imm, r2);
+    std.debug.warn("shl {}, r{}\n", .{ imm, r2 });
 }
 
 pub fn shr2(cpu: *Cpu, halfword: u16) void {
     const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
     const imm = @intCast(u32, halfword & 0x001f);
 
-    std.debug.warn("shr2 {}, r{}\n", imm, r2);
+    std.debug.warn("shr2 {}, r{}\n", .{ imm, r2 });
 }
 
 // Nintendo-specific
 pub fn cli(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("cli\n");
+    std.debug.warn("cli\n", .{});
 }
 
 pub fn sar2(cpu: *Cpu, halfword: u16) void {
     const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
     const imm = @intCast(u32, halfword & 0x001f);
 
-    std.debug.warn("sar {}, r{}\n", imm, r2);
+    std.debug.warn("sar {}, r{}\n", .{ imm, r2 });
 }
 
 pub fn setf(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("setf TODO\n");
+    std.debug.warn("setf TODO\n", .{});
 }
 
 pub fn trap(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("trap TODO\n");
+    std.debug.warn("trap TODO\n", .{});
 }
 
 pub fn reti(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("reti\n");
+    std.debug.warn("reti\n", .{});
 }
 
 pub fn halt(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("halt TODO\n");
+    std.debug.warn("halt TODO\n", .{});
 }
 
 pub fn ldsr(cpu: *Cpu, halfword: u16) void {
     const r2 = @intCast(usize, (halfword & 0x03e0) >> 5);
     const imm = @intCast(u5, halfword & 0x001f);
 
-    std.debug.warn("ldsr r{}, {}\n", r2, imm);
+    std.debug.warn("ldsr r{}, {}\n", .{ r2, imm });
 }
 
 pub fn stsr(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("stsr TODO\n");
+    std.debug.warn("stsr TODO\n", .{});
 }
 
 // Nintendo-specific
 pub fn sei(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("sei\n");
+    std.debug.warn("sei\n", .{});
 }
 
 pub fn bit_string(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("bit_string TODO\n");
+    std.debug.warn("bit_string TODO\n", .{});
 }
 
 pub fn bcond(cpu: *Cpu, halfword: u16) void {
@@ -253,52 +179,52 @@ pub fn bcond(cpu: *Cpu, halfword: u16) void {
 
     switch (cond) {
         0x0 => {
-            std.debug.warn("bv 0x{x}\n", disp);
+            std.debug.warn("bv 0x{x}\n", .{disp});
         },
         0x1 => {
-            std.debug.warn("bl 0x{x}\n", disp);
+            std.debug.warn("bl 0x{x}\n", .{disp});
         },
         0x2 => {
-            std.debug.warn("bz 0x{x}\n", disp);
+            std.debug.warn("bz 0x{x}\n", .{disp});
         },
         0x3 => {
-            std.debug.warn("bnh 0x{x}\n", disp);
+            std.debug.warn("bnh 0x{x}\n", .{disp});
         },
         0x4 => {
-            std.debug.warn("bn 0x{x}\n", disp);
+            std.debug.warn("bn 0x{x}\n", .{disp});
         },
         0x5 => {
-            std.debug.warn("br 0x{x}\n", disp);
+            std.debug.warn("br 0x{x}\n", .{disp});
         },
         0x6 => {
-            std.debug.warn("blt 0x{x}\n", disp);
+            std.debug.warn("blt 0x{x}\n", .{disp});
         },
         0x7 => {
-            std.debug.warn("ble 0x{x}\n", disp);
+            std.debug.warn("ble 0x{x}\n", .{disp});
         },
         0x8 => {
-            std.debug.warn("bnv 0x{x}\n", disp);
+            std.debug.warn("bnv 0x{x}\n", .{disp});
         },
         0x9 => {
-            std.debug.warn("bnc 0x{x}\n", disp);
+            std.debug.warn("bnc 0x{x}\n", .{disp});
         },
         0xa => {
-            std.debug.warn("bnz 0x{x}\n", disp);
+            std.debug.warn("bnz 0x{x}\n", .{disp});
         },
         0xb => {
-            std.debug.warn("bh 0x{x}\n", disp);
+            std.debug.warn("bh 0x{x}\n", .{disp});
         },
         0xc => {
-            std.debug.warn("bp 0x{x}\n", disp);
+            std.debug.warn("bp 0x{x}\n", .{disp});
         },
         0xd => {
-            std.debug.warn("nop 0x{x}\n", disp);
+            std.debug.warn("nop 0x{x}\n", .{disp});
         },
         0xe => {
-            std.debug.warn("bge 0x{x}\n", disp);
+            std.debug.warn("bge 0x{x}\n", .{disp});
         },
         0xf => {
-            std.debug.warn("bgt 0x{x}\n", disp);
+            std.debug.warn("bgt 0x{x}\n", .{disp});
         },
     }
 }
@@ -308,7 +234,7 @@ pub fn movea(cpu: *Cpu, halfword: u16) void {
     const r1 = @intCast(usize, halfword & 0x001f);
     const imm = cpu.bus.read_halfword(cpu.pc + 2) catch unreachable;
 
-    std.debug.warn("movea 0x{x}, r{}, r{}\n", imm, r1, r2);
+    std.debug.warn("movea 0x{x}, r{}, r{}\n", .{ imm, r1, r2 });
 }
 
 pub fn addi(cpu: *Cpu, halfword: u16) void {
@@ -316,7 +242,7 @@ pub fn addi(cpu: *Cpu, halfword: u16) void {
     const r1 = @intCast(usize, halfword & 0x001f);
     const imm = cpu.bus.read_halfword(cpu.pc + 2) catch unreachable;
 
-    std.debug.warn("addi {}, r{}, r{}\n", @bitCast(i16, imm), r1, r2);
+    std.debug.warn("addi {}, r{}, r{}\n", .{ @bitCast(i16, imm), r1, r2 });
 }
 
 pub fn jr(cpu: *Cpu, halfword: u16) void {
@@ -324,7 +250,7 @@ pub fn jr(cpu: *Cpu, halfword: u16) void {
     const lower = @intCast(u32, cpu.bus.read_halfword(cpu.pc + 2) catch unreachable);
     const disp = sign_extend26(@intCast(u26, (upper | lower)));
 
-    std.debug.warn("jr {} (0x{x:08})\n", @truncate(u26, disp), (cpu.pc +% disp & 0xfffffffe));
+    std.debug.warn("jr {} (0x{x:08})\n", .{ @truncate(u26, disp), (cpu.pc +% disp & 0xfffffffe) });
 }
 
 pub fn jal(cpu: *Cpu, halfword: u16) void {
@@ -332,7 +258,7 @@ pub fn jal(cpu: *Cpu, halfword: u16) void {
     const lower = @intCast(u32, cpu.bus.read_halfword(cpu.pc + 2) catch unreachable);
     const disp = sign_extend26(@intCast(u26, (upper | lower)));
 
-    std.debug.warn("jal {} (0x{x:08})\n", @truncate(u26, disp), (cpu.pc +% disp & 0xfffffffe));
+    std.debug.warn("jal {} (0x{x:08})\n", .{ @truncate(u26, disp), (cpu.pc +% disp & 0xfffffffe) });
 }
 
 pub fn ori(cpu: *Cpu, halfword: u16) void {
@@ -340,7 +266,7 @@ pub fn ori(cpu: *Cpu, halfword: u16) void {
     const r1 = @intCast(usize, halfword & 0x001f);
     const imm = cpu.bus.read_halfword(cpu.pc + 2) catch unreachable;
 
-    std.debug.warn("ori 0x{x}, r{}, r{}\n", imm, r1, r2);
+    std.debug.warn("ori 0x{x}, r{}, r{}\n", .{ imm, r1, r2 });
 }
 
 pub fn andi(cpu: *Cpu, halfword: u16) void {
@@ -348,11 +274,11 @@ pub fn andi(cpu: *Cpu, halfword: u16) void {
     const r1 = @intCast(usize, halfword & 0x001f);
     const imm = cpu.bus.read_halfword(cpu.pc + 2) catch unreachable;
 
-    std.debug.warn("andi 0x{x}, r{}, r{}\n", imm, r1, r2);
+    std.debug.warn("andi 0x{x}, r{}, r{}\n", .{ imm, r1, r2 });
 }
 
 pub fn xori(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("xori TODO\n");
+    std.debug.warn("xori TODO\n", .{});
 }
 
 pub fn movhi(cpu: *Cpu, halfword: u16) void {
@@ -360,7 +286,7 @@ pub fn movhi(cpu: *Cpu, halfword: u16) void {
     const r1 = @intCast(usize, halfword & 0x001f);
     const imm = cpu.bus.read_halfword(cpu.pc + 2) catch unreachable;
 
-    std.debug.warn("movhi 0x{x}, r{}, r{}\n", imm, r1, r2);
+    std.debug.warn("movhi 0x{x}, r{}, r{}\n", .{ imm, r1, r2 });
 }
 
 pub fn ldb(cpu: *Cpu, halfword: u16) void {
@@ -368,7 +294,7 @@ pub fn ldb(cpu: *Cpu, halfword: u16) void {
     const r1 = @intCast(usize, halfword & 0x001f);
     const disp = cpu.bus.read_halfword(cpu.pc + 2) catch unreachable;
 
-    std.debug.warn("ld.b {}[r{}], r{}\n", disp, r1, r2);
+    std.debug.warn("ld.b {}[r{}], r{}\n", .{ disp, r1, r2 });
 }
 
 pub fn ldh(cpu: *Cpu, halfword: u16) void {
@@ -376,7 +302,7 @@ pub fn ldh(cpu: *Cpu, halfword: u16) void {
     const r1 = @intCast(usize, halfword & 0x001f);
     const disp = cpu.bus.read_halfword(cpu.pc + 2) catch unreachable;
 
-    std.debug.warn("ld.h {}[r{}], r{}\n", disp, r1, r2);
+    std.debug.warn("ld.h {}[r{}], r{}\n", .{ disp, r1, r2 });
 }
 
 pub fn ldw(cpu: *Cpu, halfword: u16) void {
@@ -384,7 +310,7 @@ pub fn ldw(cpu: *Cpu, halfword: u16) void {
     const r1 = @intCast(usize, halfword & 0x001f);
     const disp = cpu.bus.read_halfword(cpu.pc + 2) catch unreachable;
 
-    std.debug.warn("ld.w {}[r{}], r{}\n", disp, r1, r2);
+    std.debug.warn("ld.w {}[r{}], r{}\n", .{ disp, r1, r2 });
 }
 
 pub fn stb(cpu: *Cpu, halfword: u16) void {
@@ -392,7 +318,7 @@ pub fn stb(cpu: *Cpu, halfword: u16) void {
     const r1 = @intCast(usize, halfword & 0x001f);
     const disp = cpu.bus.read_halfword(cpu.pc + 2) catch unreachable;
 
-    std.debug.warn("st.b r{}, {}[r{}]\n", r2, disp, r1);
+    std.debug.warn("st.b r{}, {}[r{}]\n", .{ r2, disp, r1 });
 }
 
 pub fn sth(cpu: *Cpu, halfword: u16) void {
@@ -400,7 +326,7 @@ pub fn sth(cpu: *Cpu, halfword: u16) void {
     const r1 = @intCast(usize, halfword & 0x001f);
     const disp = cpu.bus.read_halfword(cpu.pc + 2) catch unreachable;
 
-    std.debug.warn("st.h r{}, {}[r{}]\n", r2, disp, r1);
+    std.debug.warn("st.h r{}, {}[r{}]\n", .{ r2, disp, r1 });
 }
 
 pub fn stw(cpu: *Cpu, halfword: u16) void {
@@ -408,23 +334,23 @@ pub fn stw(cpu: *Cpu, halfword: u16) void {
     const r1 = @intCast(usize, halfword & 0x001f);
     const disp = cpu.bus.read_halfword(cpu.pc + 2) catch unreachable;
 
-    std.debug.warn("st.w r{}, {}[r{}]\n", r2, disp, r1);
+    std.debug.warn("st.w r{}, {}[r{}]\n", .{ r2, disp, r1 });
 }
 
 pub fn inb(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("inb TODO\n");
+    std.debug.warn("inb TODO\n", .{});
 }
 
 pub fn inh(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("inh TODO\n");
+    std.debug.warn("inh TODO\n", .{});
 }
 
 pub fn caxi(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("caxi TODO\n");
+    std.debug.warn("caxi TODO\n", .{});
 }
 
 pub fn inw(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("inw TODO\n");
+    std.debug.warn("inw TODO\n", .{});
 }
 
 pub fn outb(cpu: *Cpu, halfword: u16) void {
@@ -432,7 +358,7 @@ pub fn outb(cpu: *Cpu, halfword: u16) void {
     const r1 = @intCast(usize, halfword & 0x001f);
     const disp = cpu.bus.read_halfword(cpu.pc + 2) catch unreachable;
 
-    std.debug.warn("out.b r{}, {}[r{}]\n", r2, disp, r1);
+    std.debug.warn("out.b r{}, {}[r{}]\n", .{ r2, disp, r1 });
 }
 
 pub fn outh(cpu: *Cpu, halfword: u16) void {
@@ -440,11 +366,11 @@ pub fn outh(cpu: *Cpu, halfword: u16) void {
     const r1 = @intCast(usize, halfword & 0x001f);
     const disp = cpu.bus.read_halfword(cpu.pc + 2) catch unreachable;
 
-    std.debug.warn("out.h r{}, {}[r{}]\n", r2, disp, r1);
+    std.debug.warn("out.h r{}, {}[r{}]\n", .{ r2, disp, r1 });
 }
 
 pub fn float(cpu: *Cpu, halfword: u16) void {
-    std.debug.warn("float TODO\n");
+    std.debug.warn("float TODO\n", .{});
 }
 
 pub fn outw(cpu: *Cpu, halfword: u16) void {
@@ -452,5 +378,5 @@ pub fn outw(cpu: *Cpu, halfword: u16) void {
     const r1 = @intCast(usize, halfword & 0x001f);
     const disp = cpu.bus.read_halfword(cpu.pc + 2) catch unreachable;
 
-    std.debug.warn("out.w r{}, {}[r{}]\n", r2, disp, r1);
+    std.debug.warn("out.w r{}, {}[r{}]\n", .{ r2, disp, r1 });
 }

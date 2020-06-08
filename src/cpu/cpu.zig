@@ -3,8 +3,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const Bus = @import("../bus.zig").Bus;
 const Cart = @import("../cart.zig").Cart;
-const debug = @import("debug.zig");
-const DebugState = debug.DebugState;
+const DEBUG_INST_TABLE = @import("ops.zig").DEBUG_INST_TABLE;
 const INST_TABLE = @import("ops.zig").INST_TABLE;
 const Reg = @import("regs.zig").Reg;
 const Vip = @import("../hw/vip.zig").Vip;
@@ -28,45 +27,35 @@ pub const Cpu = struct {
     tkcw: Reg, // task control word
     pir: Reg, // Processor ID Register
 
-    debug_state: ?DebugState,
+    debug_mode: bool,
 
     pub fn new(allocator: *Allocator, cart: *Cart, debug_mode: bool) Cpu {
         var bus = Bus.new(allocator);
-
-        var debug_state: ?DebugState = null;
-        if (debug_mode) {
-            debug_state = DebugState.new(allocator);
-        }
 
         return Cpu{
             .bus = bus,
 
             .regs = [32]Reg{
-                //               🌯🌯🌯🌯🌯🌯🌯🌯🌯
-                Reg(0),   Reg(0x0), Reg(0x0), Reg(0x0),
-                Reg(0x0), Reg(0x0), Reg(0x0), Reg(0x0),
-                Reg(0x0), Reg(0x0), Reg(0x0), Reg(0x0),
-                Reg(0x0), Reg(0x0), Reg(0x0), Reg(0x0),
-                Reg(0x0), Reg(0x0), Reg(0x0), Reg(0x0),
-                Reg(0x0), Reg(0x0), Reg(0x0), Reg(0x0),
-                Reg(0x0), Reg(0x0), Reg(0x0), Reg(0x0),
-                Reg(0x0), Reg(0x0), Reg(0x0), Reg(0x0),
+                0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+                0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+                0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+                0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
             },
 
-            .pc = Reg(0xfffffff0),
+            .pc = 0xfffffff0,
 
-            .psw = Reg(0x00008000),
-            .eipc = Reg(0),
-            .eipsw = Reg(0),
-            .fepc = Reg(0),
-            .fepsw = Reg(0),
-            .ecr = Reg(0x0000fff0),
-            .adtre = Reg(0),
-            .chcw = Reg(0),
-            .tkcw = Reg(0),
-            .pir = Reg(0),
+            .psw = 0x00008000,
+            .eipc = 0,
+            .eipsw = 0,
+            .fepc = 0,
+            .fepsw = 0,
+            .ecr = 0x0000fff0,
+            .adtre = 0,
+            .chcw = 0,
+            .tkcw = 0,
+            .pir = 0,
 
-            .debug_state = debug_state,
+            .debug_mode = debug_mode,
         };
     }
 
@@ -78,8 +67,9 @@ pub const Cpu = struct {
         const halfword = self.bus.read_halfword(self.pc) catch unreachable;
         const opcode = (halfword & 0xfc00) >> 10;
 
-        if (self.debug_state) |*debug_state| {
-            debug.debug(self, halfword, debug_state);
+        if (self.debug_mode) {
+            std.debug.warn("0x{x:08}\t{x:04}\t", .{ self.pc, halfword });
+            DEBUG_INST_TABLE[opcode](self, halfword);
         }
 
         // call function from function pointer table

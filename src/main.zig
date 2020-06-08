@@ -12,7 +12,7 @@ pub fn main() anyerror!void {
     const args = try std.process.argsAlloc(allocator);
 
     if (args.len != 2) {
-        std.debug.warn("Expected ichigo <rom_path>\n");
+        std.debug.warn("Expected ichigo <rom_path>\n", .{});
         std.process.exit(1);
     }
 

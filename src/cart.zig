@@ -1,5 +1,5 @@
 const std = @import("std");
-const io = std.io;
+const fs = std.fs;
 const mem = std.mem;
 
 const Allocator = mem.Allocator;
@@ -22,7 +22,7 @@ pub const Cart = struct {
         mem.set(u8, exp_ram, 0);
 
         return Cart{
-            .rom = try io.readFileAlloc(allocator, rom_path),
+            .rom = try fs.cwd().readFileAlloc(allocator, rom_path, 0xffffffff),
             .sram = sram,
             .exp_ram = exp_ram,
         };

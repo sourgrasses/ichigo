@@ -8,10 +8,10 @@ pub const Com = struct {
 
     pub fn new() Com {
         return Com{
-            .link_control = Reg(0),
-            .auxiliary_link = Reg(0),
-            .link_transmit = Reg(0),
-            .link_receive = Reg(0),
+            .link_control = 0,
+            .auxiliary_link = 0,
+            .link_transmit = 0,
+            .link_receive = 0,
         };
     }
 };
@@ -23,9 +23,9 @@ pub const GamePad = struct {
 
     pub fn new() GamePad {
         return GamePad{
-            .input_high = Reg(0),
-            .input_low = Reg(0),
-            .input_control = Reg(0),
+            .input_high = 0,
+            .input_low = 0,
+            .input_control = 0,
         };
     }
 };
@@ -38,10 +38,10 @@ pub const Timer = struct {
 
     pub fn new() Timer {
         return Timer{
-            .tcr = Reg(0),
-            .tcr_reload_low = Reg(0),
-            .tcr_reload_high = Reg(0),
-            .wcr = Reg(0),
+            .tcr = 0,
+            .tcr_reload_low = 0,
+            .tcr_reload_high = 0,
+            .wcr = 0,
         };
     }
 };
